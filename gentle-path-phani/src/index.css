@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 30% 97%;
+    --foreground: 220 20% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 20%;
+
+    --primary: 152 25% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 25% 92%;
+    --secondary-foreground: 220 20% 25%;
+
+    --muted: 40 20% 94%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 28 50% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 60% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 152 25% 45%;
+
+    --radius: 0.75rem;
+
+    /* Custom healing app tokens */
+    --sage: 152 25% 45%;
+    --sage-light: 152 30% 92%;
+    --sage-dark: 152 25% 35%;
+    --cream: 40 30% 97%;
+    --cream-dark: 40 25% 92%;
+    --warm-gold: 38 60% 55%;
+    --terracotta: 18 45% 55%;
+    --charcoal: 220 20% 20%;
+    --charcoal-light: 220 15% 35%;
+
+    /* Gradients */
+    --gradient-calm: linear-gradient(135deg, hsl(152 30% 92%) 0%, hsl(40 30% 97%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(152 25% 45% / 0.1) 0%, hsl(40 30% 97%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 2px 12px hsl(220 20% 20% / 0.06);
+    --shadow-card: 0 4px 24px hsl(220 20% 20% / 0.08);
+    --shadow-elevated: 0 8px 32px hsl(220 20% 20% / 0.12);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 220 20% 10%;
+    --foreground: 40 20% 95%;
+
+    --card: 220 20% 14%;
+    --card-foreground: 40 20% 95%;
+
+    --popover: 220 20% 14%;
+    --popover-foreground: 40 20% 95%;
+
+    --primary: 152 30% 55%;
+    --primary-foreground: 220 20% 10%;
+
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 40 20% 90%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 40 15% 60%;
+
+    --accent: 28 45% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 55% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 22%;
+    --input: 220 15% 22%;
+    --ring: 152 30% 55%;
+
+    --sage: 152 30% 55%;
+    --sage-light: 152 20% 20%;
+    --sage-dark: 152 30% 65%;
+    --cream: 220 20% 10%;
+    --cream-dark: 220 15% 15%;
+
+    --gradient-calm: linear-gradient(135deg, hsl(220 20% 12%) 0%, hsl(220 20% 10%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(152 30% 55% / 0.1) 0%, hsl(220 20% 10%) 100%);
+
+    --shadow-soft: 0 2px 12px hsl(0 0% 0% / 0.2);
+    --shadow-card: 0 4px 24px hsl(0 0% 0% / 0.25);
+    --shadow-elevated: 0 8px 32px hsl(0 0% 0% / 0.3);
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cormorant Garamond', serif;
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl;
+    box-shadow: var(--shadow-card);
+  }
+
+  .gradient-calm {
+    background: var(--gradient-calm);
+  }
+
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .progress-ring {
+    transform: rotate(-90deg);
+  }
+
+  .fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .slide-up {
+    animation: slideUp 0.4s ease-out forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
