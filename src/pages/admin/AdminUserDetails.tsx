@@ -253,7 +253,7 @@ export default function AdminUserDetails() {
     try {
       await deleteAdminProtocol(deleteTarget.id);
       setProtocols((prev) => prev.filter((x) => x.id !== deleteTarget.id));
-      toast({ title: "Protocol deleted" });
+      toast({ title: "Protocol removed" });
       setDeleteOpen(false);
       setDeleteTarget(null);
     } catch (e: any) {
