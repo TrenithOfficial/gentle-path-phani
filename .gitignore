@@ -1,0 +1,25 @@
+# env / secrets
+.env
+**/.env
+backend/firebase-admin.json
+
+# dependencies / builds
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+
+# logs
+*.log
+
+# binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS
+.DS_Store
+Thumbs.db
