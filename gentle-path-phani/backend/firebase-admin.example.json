@@ -1,8 +1,0 @@
-{
-  "type": "service_account",
-  "project_id": "YOUR_PROJECT_ID",
-  "private_key_id": "REDACTED",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nREDACTED\n-----END PRIVATE KEY-----\n",
-  "client_email": "REDACTED",
-  "client_id": "REDACTED"
-}
