@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
 
-// ✅ ADD THIS (fixes iOS WKWebView login hang)
-setPersistence(auth, inMemoryPersistence).catch((e) => {
+// ✅ IMPORTANT: export a promise we can await before login
+export const authReady = setPersistence(auth, inMemoryPersistence).catch((e) => {
   console.error("Firebase persistence error:", e);
 });
