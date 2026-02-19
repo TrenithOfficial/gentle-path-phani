@@ -73,8 +73,11 @@ func main() {
 			if origin == "" {
 				return true
 			}
-			if origin == "capacitor://localhost" || origin == "ionic://localhost" {
-				return true
+			if origin == "capacitor://localhost" ||
+			   origin == "ionic://localhost" ||
+			   origin == "https://localhost" ||
+			   origin == "http://localhost" {
+				   return true
 			}
 			for _, o := range origins {
 				if origin == o {
