@@ -39,14 +39,34 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // ✅ ADDED: debug logs
+      console.log("LOGIN: submit clicked");
+      console.log("API_BASE:", API_BASE);
+
       const user = await login(email, password);
+
+      // ✅ ADDED: debug log
+      console.log("LOGIN: firebase user uid:", user?.uid);
+
       const token = await user.getIdToken(true);
       console.log("ID_TOKEN:", token);
 
+      // ✅ ADDED: timeout + abort controller so iOS doesn’t hang forever
+      console.log("LOGIN: calling /api/me ...");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000); // 12 seconds
 
       const res = await fetch(`${API_BASE}/api/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
+
+      // ✅ ADDED: debug log
+      console.log("LOGIN: /api/me status:", res.status);
 
       if (!res.ok) {
         const text = await res.text();
@@ -54,6 +74,10 @@ const Login = () => {
       }
 
       const me = await res.json();
+
+      // ✅ ADDED: debug log
+      console.log("LOGIN: /api/me response JSON:", me);
+
       navigate(me.role === "admin" ? "/admin" : "/dashboard");
 
       toast({
@@ -61,12 +85,19 @@ const Login = () => {
         description: "You've successfully logged in.",
       });
     } catch (err: any) {
+      // ✅ ADDED: better message for timeout/abort
+      const message =
+        err?.name === "AbortError"
+          ? "Server took too long to respond. Please try again."
+          : err?.code === "auth/invalid-credential"
+          ? "Invalid email or password."
+          : err?.message || "Login failed.";
+
+      console.error("LOGIN: error", err);
+
       toast({
         title: "Login failed",
-        description:
-          err?.code === "auth/invalid-credential"
-            ? "Invalid email or password."
-            : err?.message || "Login failed.",
+        description: message,
         variant: "destructive",
       });
     } finally {
