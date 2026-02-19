@@ -10,6 +10,15 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+// ✅ Debug (temporary): confirms env vars exist in iOS/Android build
+console.log("FIREBASE CONFIG CHECK", {
+  apiKey: firebaseConfig.apiKey ? "OK" : "MISSING",
+  authDomain: firebaseConfig.authDomain ? "OK" : "MISSING",
+  projectId: firebaseConfig.projectId ? "OK" : "MISSING",
+  storageBucket: firebaseConfig.storageBucket ? "OK" : "MISSING",
+  messagingSenderId: firebaseConfig.messagingSenderId ? "OK" : "MISSING",
+  appId: firebaseConfig.appId ? "OK" : "MISSING",
+});
 
+const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
