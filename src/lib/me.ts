@@ -28,7 +28,7 @@ export async function fetchMe(): Promise<AppMe> {
     });
 
     if (res.status < 200 || res.status >= 300) {
-      throw new Error(`Failed to load /me: ${res.status} ${JSON.stringify(res.data)}`);
+      throw new Error(Failed to load /me: status=${res.status} data=${JSON.stringify(res.data)} headers=${JSON.stringify(res.headers)} url=${url}`);
     }
 
     return res.data as AppMe;
