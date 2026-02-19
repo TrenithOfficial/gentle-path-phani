@@ -1,5 +1,5 @@
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth, authReady } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 const withTimeout = <T,>(p: Promise<T>, ms = 15000) =>
   Promise.race([
@@ -11,10 +11,6 @@ const withTimeout = <T,>(p: Promise<T>, ms = 15000) =>
 
 export async function login(email: string, password: string) {
   console.log("AUTH: login() called");
-
-  console.log("AUTH: waiting authReady...");
-  await withTimeout(authReady, 8000);
-  console.log("AUTH: authReady done");
 
   console.log("AUTH: calling signInWithEmailAndPassword...");
   const cred = await withTimeout(
