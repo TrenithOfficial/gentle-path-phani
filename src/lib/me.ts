@@ -1,7 +1,6 @@
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { apiUrl } from "@/lib/api";
-import { Capacitor } from "@capacitor/core";
-import { CapacitorHttp } from "@capacitor/core";
+import { httpGet } from "@/lib/http";
 
 export type AppMe = {
   id: string;
@@ -16,7 +15,6 @@ export type AppMe = {
 // --------------------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// ⭐ WAIT FOR FIREBASE USER (ANDROID FIX)
 async function waitForUser(auth: any) {
   if (auth.currentUser) return auth.currentUser;
 
@@ -39,65 +37,37 @@ async function waitForUser(auth: any) {
 // --------------------
 export async function fetchMe(): Promise<AppMe> {
   const auth = getAuth();
-
-  // ✅ Use waitForUser instead of reading currentUser immediately
   const user: any = await waitForUser(auth);
 
-  // ✅ force refresh token (helps Android right after login)
   const token = await user.getIdToken(true);
-
   const url = apiUrl("/api/me");
 
-  // ✅ Native (Android/iOS): no CORS
-  if (Capacitor.isNativePlatform()) {
-    const res = await CapacitorHttp.request({
-      method: "GET",
-      url,
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  const res = await httpGet<AppMe>(url, { Authorization: `Bearer ${token}` });
 
-    console.log("ME(native) URL:", url);
-    console.log("ME(native) STATUS:", res.status);
-    console.log("ME(native) DATA:", res.data);
-    console.log("ME(native) HEADERS:", res.headers);
+  console.log("ME URL:", url);
+  console.log("ME STATUS:", res.status);
+  console.log("ME DATA:", res.data);
 
-    if (res.status < 200 || res.status >= 300) {
-      throw new Error(
-        `Failed to load /me: status=${res.status} data=${JSON.stringify(
-          res.data
-        )} headers=${JSON.stringify(res.headers)} url=${url}`
-      );
-    }
-
-    return res.data as AppMe;
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(
+      `Failed to load /me: status=${res.status} data=${JSON.stringify(res.data)} url=${url}`
+    );
   }
 
-  // ✅ Web fallback
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to load /me: ${res.status} ${text}`);
-  }
-
-  return res.json();
+  return res.data;
 }
 
-// ✅ Use this in your login flow to avoid "fails first time, works after restart"
 export async function fetchMeWithRetry(retries = 3): Promise<AppMe> {
   let lastErr: any;
 
   for (let i = 0; i < retries; i++) {
     try {
-      if (i > 0) await sleep(600 * i); // 0ms, 600ms, 1200ms...
+      if (i > 0) await sleep(600 * i);
       return await fetchMe();
     } catch (e: any) {
       lastErr = e;
       const msg = String(e?.message || "");
 
-      // Retry only for transient timing / token readiness cases
       if (
         msg.includes("Not logged in") ||
         msg.includes("Auth timed out") ||
@@ -106,7 +76,6 @@ export async function fetchMeWithRetry(retries = 3): Promise<AppMe> {
         continue;
       }
 
-      // Not transient -> throw immediately
       throw e;
     }
   }
