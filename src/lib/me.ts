@@ -3,14 +3,23 @@ import { apiUrl } from "@/lib/api";
 import { Capacitor } from "@capacitor/core";
 import { CapacitorHttp } from "@capacitor/core";
 
-export async function fetchMyPasswordResetLink(): Promise<string> {
+export type AppMe = {
+  id: string;
+  email: string;
+  name?: string;
+  role: "admin" | "client";
+  startDate?: string | null;
+};
+
+export async function fetchMe(): Promise<AppMe> {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
 
   const token = await user.getIdToken(true);
-  const url = apiUrl("/api/me/password-reset-link");
+  const url = apiUrl("/api/me");
 
+  // ✅ Native (Android/iOS): no CORS
   if (Capacitor.isNativePlatform()) {
     const res = await CapacitorHttp.request({
       method: "GET",
@@ -19,19 +28,21 @@ export async function fetchMyPasswordResetLink(): Promise<string> {
     });
 
     if (res.status < 200 || res.status >= 300) {
-      throw new Error(`Failed to get reset link: ${res.status} ${JSON.stringify(res.data)}`);
+      throw new Error(`Failed to load /me: ${res.status} ${JSON.stringify(res.data)}`);
     }
 
-    const link = (res.data?.resetLink || "").trim();
-    if (!link) throw new Error("Reset link missing in response");
-    return link;
+    return res.data as AppMe;
   }
 
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error(`Failed to get reset link: ${res.status} ${await res.text()}`);
+  // ✅ Web fallback
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
 
-  const data = await res.json();
-  const link = (data?.resetLink || "").trim();
-  if (!link) throw new Error("Reset link missing in response");
-  return link;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to load /me: ${res.status} ${text}`);
+  }
+
+  return res.json();
 }
