@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
+import { apiUrl } from "@/lib/api";
+import { httpGet } from "@/lib/http";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
@@ -55,28 +57,29 @@ const Login = () => {
       console.log("LOGIN: calling /api/me ...");
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 12000); // 12 seconds
+clearTimeout(timeout); // ✅ no need abort controller for native http
 
-      const res = await fetch(`${API_BASE}/api/me`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-        signal: controller.signal,
-      }).finally(() => clearTimeout(timeout));
+const url = apiUrl("/api/me");
+console.log("LOGIN: calling /api/me ...", url);
 
-      // ✅ ADDED: debug log
-      console.log("LOGIN: /api/me status:", res.status);
+const r = await httpGet(url, {
+  Authorization: `Bearer ${token}`,
+  Accept: "application/json",
+});
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to load profile: ${res.status} ${text}`);
-      }
+console.log("LOGIN: /api/me status:", r.status);
+console.log("LOGIN: /api/me data:", r.data);
 
-      const me = await res.json();
+if (r.status < 200 || r.status >= 300) {
+  throw new Error(
+    `Failed to load profile: ${r.status} ${
+      typeof r.data === "string" ? r.data : JSON.stringify(r.data)
+    }`
+  );
+}
 
-      // ✅ ADDED: debug log
-      console.log("LOGIN: /api/me response JSON:", me);
+const me = r.data as any;
+
 
       navigate(me.role === "admin" ? "/admin" : "/dashboard");
 
