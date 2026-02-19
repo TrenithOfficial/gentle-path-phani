@@ -1,5 +1,6 @@
 import { getAuth } from "firebase/auth";
 import { apiUrl } from "@/lib/api";
+import { httpGet } from "@/lib/http";
 
 export type ClientGuidanceRow = {
   id: string;
@@ -26,43 +27,46 @@ export type ClientHealingSheetRow = {
   uploadedAt: string;
 };
 
-async function authedFetch(input: RequestInfo, init?: RequestInit) {
+async function authedGetJson<T>(url: string): Promise<T> {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) throw new Error("Not logged in");
+
   const token = await user.getIdToken(true);
 
-  const res = await fetch(input, {
-    ...(init || {}),
-    headers: {
-      ...(init?.headers || {}),
-      Authorization: `Bearer ${token}`,
-    },
+  // Uses fetch on web, CapacitorHttp on native (via httpGet)
+  const r = await httpGet(url, {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
   });
 
-  return res;
+  if (r.status < 200 || r.status >= 300) {
+    throw new Error(
+      `Request failed: ${r.status} ${
+        typeof r.data === "string" ? r.data : JSON.stringify(r.data)
+      }`
+    );
+  }
+
+  return r.data as T;
 }
 
 export async function fetchGuidanceToday(): Promise<TodayGuidanceResponse> {
-  const res = await authedFetch(apiUrl("/api/guidance/today"));
-  if (!res.ok) throw new Error(`Failed to load guidance: ${res.status} ${await res.text()}`);
-  return res.json();
+  return authedGetJson<TodayGuidanceResponse>(apiUrl("/api/guidance/today"));
 }
 
 export async function fetchGuidanceByPhaseDay(
   phaseId: number,
   day: number
 ): Promise<ClientGuidanceRow | null> {
-  const res = await authedFetch(apiUrl(`/api/guidance?phaseId=${phaseId}&day=${day}`));
-  if (!res.ok) throw new Error(`Failed to load guidance: ${res.status} ${await res.text()}`);
-  const data = await res.json();
+  const data = await authedGetJson<{ guidance?: ClientGuidanceRow | null }>(
+    apiUrl(`/api/guidance?phaseId=${phaseId}&day=${day}`)
+  );
   return data.guidance ?? null;
 }
 
 export async function fetchHealingSheets(): Promise<ClientHealingSheetRow[]> {
-  const res = await authedFetch(apiUrl("/api/healing-sheets"));
-  if (!res.ok) throw new Error(`Failed to load sheets: ${res.status} ${await res.text()}`);
-  return res.json();
+  return authedGetJson<ClientHealingSheetRow[]>(apiUrl("/api/healing-sheets"));
 }
 
 // ✅ IMPORTANT: normalize any wrong admin paths into the real static path (/uploads)
