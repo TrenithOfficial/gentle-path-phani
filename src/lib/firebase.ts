@@ -1,7 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-console.log("FIREBASE TS LOADED ✅ v1");
+import {
+  initializeAuth,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
+} from "firebase/auth";
 
+console.log("FIREBASE TS LOADED ✅ v2");
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,7 +16,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// ✅ Debug (temporary): confirms env vars exist in iOS/Android build
+// ✅ Debug: confirms env vars exist in iOS/Android build
 console.log("FIREBASE CONFIG CHECK", {
   apiKey: firebaseConfig.apiKey ? "OK" : "MISSING",
   authDomain: firebaseConfig.authDomain ? "OK" : "MISSING",
@@ -23,4 +27,16 @@ console.log("FIREBASE CONFIG CHECK", {
 });
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+
+/**
+ * ✅ Capacitor fix:
+ * - WKWebView/Android WebView sometimes stalls with default Auth persistence
+ * - Force persistence to something stable.
+ *
+ * Try browserLocalPersistence first.
+ * If you ever see issues on web, swap to indexedDBLocalPersistence.
+ */
+export const auth = initializeAuth(app, {
+  persistence: browserLocalPersistence,
+  // persistence: indexedDBLocalPersistence, // optional alternative
+});
