@@ -73,10 +73,12 @@ func main() {
 			if origin == "" {
 				return true
 			}
-			if origin == "capacitor://localhost" ||
-			   origin == "ionic://localhost" ||
-			   origin == "https://localhost" ||
-			   origin == "http://localhost" {
+			if strings.HasPrefix(origin, "capacitor://localhost") ||
+		strings.HasPrefix(origin, "ionic://localhost") ||
+		strings.HasPrefix(origin, "http://localhost") ||
+		strings.HasPrefix(origin, "https://localhost") ||
+		strings.HasPrefix(origin, "http://127.0.0.1") ||
+		strings.HasPrefix(origin, "https://127.0.0.1") {
 				   return true
 			}
 			for _, o := range origins {
