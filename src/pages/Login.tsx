@@ -93,7 +93,8 @@ const Login = () => {
           ? "Invalid email or password."
           : err?.message || "Login failed.";
 
-      console.error("LOGIN: error", err);
+      console.error("LOGIN: error raw", err);
+      console.error("LOGIN: error json", JSON.stringify(err, Object.getOwnPropertyNames(err)));
 
       toast({
         title: "Login failed",
