@@ -60,7 +60,7 @@ func main() {
 
 	corsCfg := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "Accept", "Origin"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: false,
 	}
