@@ -214,19 +214,6 @@ export const Header = ({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
-          {/* Mobile logout icon for pages WITHOUT profile menu (admin + client sub pages) */}
-          {!hideLogout && !showProfileMenu && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleLogout}
-              className="h-9 w-9 md:hidden"
-              aria-label="Logout"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
-          )}
         </div>
       </header>
 
@@ -290,11 +277,12 @@ export const Header = ({
         </div>
       )}
 
-      {/* Desktop-only floating logout (mobile uses header icon to avoid overlap) */}
+      {/* Existing floating logout stays for other pages.
+          On dashboard (profile menu enabled), we hide the floating one to avoid duplicates. */}
       {!hideLogout && !showProfileMenu && (
         <button
           onClick={handleLogout}
-          className="fixed bottom-5 right-5 z-[99999] hidden md:flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-xl hover:bg-red-700"
+          className="fixed bottom-5 right-5 z-[99999] flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-xl hover:bg-red-700"
         >
           <LogOut className="h-4 w-4" />
           Logout
