@@ -158,7 +158,7 @@ export const Header = ({
             )}
 
             {title && (
-              <h1 className="font-serif text-lg font-semibold text-foreground">
+              <h1 className="font-serif text-lg font-medium text-foreground">
                 {title}
               </h1>
             )}
