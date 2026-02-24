@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { login } from "@/lib/auth";
+import { apiUrl } from "@/lib/api";
+import { httpGet } from "@/lib/http";
 
 const API_BASE =
   import.meta.env.VITE_API_BASE_URL ||
@@ -39,21 +41,46 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      // ✅ ADDED: debug logs
+      console.log("LOGIN: submit clicked");
+      console.log("API_BASE:", API_BASE);
+
       const user = await login(email, password);
+
+      // ✅ ADDED: debug log
+      console.log("LOGIN: firebase user uid:", user?.uid);
+
       const token = await user.getIdToken(true);
       console.log("ID_TOKEN:", token);
 
+      // ✅ ADDED: timeout + abort controller so iOS doesn’t hang forever
+      console.log("LOGIN: calling /api/me ...");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000); // 12 seconds
+clearTimeout(timeout); // ✅ no need abort controller for native http
 
-      const res = await fetch(`${API_BASE}/api/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+const url = apiUrl("/api/me");
+console.log("LOGIN: calling /api/me ...", url);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Failed to load profile: ${res.status} ${text}`);
-      }
+const r = await httpGet(url, {
+  Authorization: `Bearer ${token}`,
+  Accept: "application/json",
+});
 
-      const me = await res.json();
+console.log("LOGIN: /api/me status:", r.status);
+console.log("LOGIN: /api/me data:", r.data);
+
+if (r.status < 200 || r.status >= 300) {
+  throw new Error(
+    `Failed to load profile: ${r.status} ${
+      typeof r.data === "string" ? r.data : JSON.stringify(r.data)
+    }`
+  );
+}
+
+const me = r.data as any;
+
+
       navigate(me.role === "admin" ? "/admin" : "/dashboard");
 
       toast({
@@ -61,12 +88,20 @@ const Login = () => {
         description: "You've successfully logged in.",
       });
     } catch (err: any) {
+      // ✅ ADDED: better message for timeout/abort
+      const message =
+        err?.name === "AbortError"
+          ? "Server took too long to respond. Please try again."
+          : err?.code === "auth/invalid-credential"
+          ? "Invalid email or password."
+          : err?.message || "Login failed.";
+
+      console.error("LOGIN: error raw", err);
+      console.error("LOGIN: error json", JSON.stringify(err, Object.getOwnPropertyNames(err)));
+
       toast({
         title: "Login failed",
-        description:
-          err?.code === "auth/invalid-credential"
-            ? "Invalid email or password."
-            : err?.message || "Login failed.",
+        description: message,
         variant: "destructive",
       });
     } finally {

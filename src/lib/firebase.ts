@@ -1,5 +1,12 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
+import {
+  initializeAuth,
+  browserSessionPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
+} from "firebase/auth";
+
+console.log("FIREBASE TS LOADED ✅ v2");
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -10,11 +17,32 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// ✅ Debug: confirms env vars exist in iOS/Android build
+console.log("FIREBASE CONFIG CHECK", {
+  apiKey: firebaseConfig.apiKey ? "OK" : "MISSING",
+  authDomain: firebaseConfig.authDomain ? "OK" : "MISSING",
+  projectId: firebaseConfig.projectId ? "OK" : "MISSING",
+  storageBucket: firebaseConfig.storageBucket ? "OK" : "MISSING",
+  messagingSenderId: firebaseConfig.messagingSenderId ? "OK" : "MISSING",
+  appId: firebaseConfig.appId ? "OK" : "MISSING",
+});
+
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+/**
+ * ✅ Goal:
+ * - Web: session-only (refresh keeps login, closing browser logs out)
+ * - Capacitor: local persistence is safer for WKWebView / Android WebView
+ *
+ * We detect Capacitor by checking for window.Capacitor at runtime.
+ */
+const isCapacitor =
+  typeof window !== "undefined" && (window as any)?.Capacitor?.isNativePlatform;
 
-// Session-only: refresh keeps login, but closing the browser/app clears it
-setPersistence(auth, browserSessionPersistence).catch((err) => {
-  console.error("Failed to set auth persistence:", err);
+export const auth = initializeAuth(app, {
+  persistence: isCapacitor ? browserLocalPersistence : browserSessionPersistence,
+
+  // If you ever see issues with browserLocalPersistence on a specific device,
+  // you can switch Capacitor to indexedDBLocalPersistence:
+  // persistence: isCapacitor ? indexedDBLocalPersistence : browserSessionPersistence,
 });

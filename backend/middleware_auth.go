@@ -9,6 +9,11 @@ import (
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+
+		if c.Request.Method == "OPTIONS" {
+      c.AbortWithStatus(204)
+      return
+    }
 		// ✅ Prevent Cloud Run panic when Firebase admin isn't initialized
 		if FirebaseAuth == nil {
 			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{

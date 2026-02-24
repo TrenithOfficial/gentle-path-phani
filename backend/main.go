@@ -60,7 +60,7 @@ func main() {
 
 	corsCfg := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Authorization", "Content-Type"},
+		AllowHeaders:     []string{"Authorization", "Content-Type", "Accept", "Origin"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: false,
 	}
@@ -73,8 +73,13 @@ func main() {
 			if origin == "" {
 				return true
 			}
-			if origin == "capacitor://localhost" || origin == "ionic://localhost" {
-				return true
+			if strings.HasPrefix(origin, "capacitor://localhost") ||
+		strings.HasPrefix(origin, "ionic://localhost") ||
+		strings.HasPrefix(origin, "http://localhost") ||
+		strings.HasPrefix(origin, "https://localhost") ||
+		strings.HasPrefix(origin, "http://127.0.0.1") ||
+		strings.HasPrefix(origin, "https://127.0.0.1") {
+				   return true
 			}
 			for _, o := range origins {
 				if origin == o {
