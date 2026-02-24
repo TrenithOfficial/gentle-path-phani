@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import {
   initializeAuth,
+  browserSessionPersistence,
   browserLocalPersistence,
   indexedDBLocalPersistence,
 } from "firebase/auth";
@@ -29,14 +30,19 @@ console.log("FIREBASE CONFIG CHECK", {
 const app = initializeApp(firebaseConfig);
 
 /**
- * ✅ Capacitor fix:
- * - WKWebView/Android WebView sometimes stalls with default Auth persistence
- * - Force persistence to something stable.
+ * ✅ Goal:
+ * - Web: session-only (refresh keeps login, closing browser logs out)
+ * - Capacitor: local persistence is safer for WKWebView / Android WebView
  *
- * Try browserLocalPersistence first.
- * If you ever see issues on web, swap to indexedDBLocalPersistence.
+ * We detect Capacitor by checking for window.Capacitor at runtime.
  */
+const isCapacitor =
+  typeof window !== "undefined" && (window as any)?.Capacitor?.isNativePlatform;
+
 export const auth = initializeAuth(app, {
-  persistence: browserLocalPersistence,
-  // persistence: indexedDBLocalPersistence, // optional alternative
+  persistence: isCapacitor ? browserLocalPersistence : browserSessionPersistence,
+
+  // If you ever see issues with browserLocalPersistence on a specific device,
+  // you can switch Capacitor to indexedDBLocalPersistence:
+  // persistence: isCapacitor ? indexedDBLocalPersistence : browserSessionPersistence,
 });

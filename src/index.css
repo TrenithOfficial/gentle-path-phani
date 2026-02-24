@@ -1,3 +1,17 @@
+/* iOS Safe Area Support */
+html,
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Ensure fixed headers respect safe area */
+header,
+.top-header,
+.app-header {
+  padding-top: env(safe-area-inset-top);
+}
+
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
