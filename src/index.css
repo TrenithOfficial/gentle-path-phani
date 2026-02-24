@@ -1,8 +1,15 @@
 /* iOS Safe Area Support */
 html,
 body {
-  padding-top: env(safe-area-inset-top);
+  padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS notch: only the header needs top safe-area padding */
+header,
+.top-header,
+.app-header {
+  padding-top: env(safe-area-inset-top);
 }
 
 /* Ensure fixed headers respect safe area */
