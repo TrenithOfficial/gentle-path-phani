@@ -30,7 +30,7 @@ spec:
         run.googleapis.com/cloudsql-instances: diesel-media-485505-e2:us-central1:gentle-path-db
         run.googleapis.com/startup-cpu-boost: 'true'
       labels:
-        client.knative.dev/nonce: pciipgdquf
+        client.knative.dev/nonce: yywkxwbhjw
         commit-sha: bc16b329a6540c0c0ae456e4a47d0403ab634085
         gcb-build-id: a38bc56c-3830-4411-a3c4-b817a26f9abb
         gcb-trigger-id: a3c2113e-5d81-4cbc-99a1-5294370e4421
@@ -79,7 +79,7 @@ spec:
         - name: UPLOADS_BUCKET
           value: gentle-path-uploads-diesel-media-485505-e2
         - name: CORS_ORIGINS
-          value: "https://gentlepath.trenith.com,http://localhost:8080"
+          value: https://gentlepath.trenith.com,http://localhost:8080
         image: us-central1-docker.pkg.dev/diesel-media-485505-e2/gentle-path-repo/gentle-path-backend:latest
         name: gentle-path-api-1
         ports:
@@ -95,7 +95,7 @@ spec:
           tcpSocket:
             port: 8080
           timeoutSeconds: 240
-      serviceAccountName: 883951071472-compute@developer.gserviceaccount.com
+      serviceAccountName: gentle-path-runner@diesel-media-485505-e2.iam.gserviceaccount.com
       timeoutSeconds: 300
   traffic:
   - latestRevision: true
