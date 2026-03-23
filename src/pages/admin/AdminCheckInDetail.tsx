@@ -28,7 +28,7 @@ const AdminCheckInDetail = () => {
         if (!cancelled) setRow(data);
       } catch (e: any) {
         console.error(e);
-        if (!cancelled) setError(e?.message || "Failed to load check-in details");
+        if (!cancelled) setError(e?.message || "Failed to load the check-in details");
       } finally {
         if (!cancelled) setLoading(false);
       }
