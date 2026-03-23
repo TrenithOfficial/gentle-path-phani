@@ -47,7 +47,7 @@ export default function HealingSheets() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header title="Healing Sheets" showBack />
+      <Header title="Healing Sheets" showBack showProfileMenu />
 
       <main className="container max-w-lg mx-auto px-4 py-6 space-y-6">
         <Card variant="elevated">

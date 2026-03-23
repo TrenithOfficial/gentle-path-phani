@@ -193,7 +193,7 @@ export default function Message() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header title="Messages" showBack />
+      <Header title="Messages" showBack showProfileMenu />
 
       <main className="container max-w-lg mx-auto px-4 py-4 space-y-4">
         <Card variant="glass" className="animate-fade-in">

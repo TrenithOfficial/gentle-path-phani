@@ -43,7 +43,7 @@ export default function Guidance() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header title="Today's Guidance" showBack />
+      <Header title="Today's Guidance" showBack showProfileMenu />
 
       <main className="container max-w-lg mx-auto px-4 py-6">
         {loading && (

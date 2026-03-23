@@ -133,7 +133,7 @@ const CheckIn = () => {
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-background">
-        <Header title="Daily Check-in" showBack />
+        <Header title="Daily Check-in" showBack showProfileMenu />
 
         <main className="container max-w-lg mx-auto px-4 py-8">
           <Card variant="elevated" className="text-center animate-fade-in">
