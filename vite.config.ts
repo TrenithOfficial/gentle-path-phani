@@ -5,13 +5,11 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: "./",
+  base: "/",
   server: {
     host: "::",
     port: 8080,
   },
-  // ✅ Railway runs `vite preview` behind its own host, so allow it there.
-  // This does NOT affect your local dev setup.
   preview: {
     host: true,
     port: Number(process.env.PORT) || 8080,
