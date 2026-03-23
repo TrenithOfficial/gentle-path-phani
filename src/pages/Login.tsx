@@ -139,7 +139,7 @@ const me = r.data as any;
 
       toast({
         title: "Message sent",
-        description: "Our support team will be back to you shortly.",
+        description: "Our support team will get back to you shortly.",
       });
 
       // reset + close
