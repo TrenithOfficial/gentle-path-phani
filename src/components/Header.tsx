@@ -186,6 +186,14 @@ export const Header = ({
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
+                  onClick={() => navigate("/account")}
+                  className="cursor-pointer"
+                >
+                  <UserCircle className="h-4 w-4 mr-2" />
+                  Manage account
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
                   onClick={() => {
                     if (onChangePasswordClick) onChangePasswordClick();
                     else alert("Next step: we will wire Change Password link");

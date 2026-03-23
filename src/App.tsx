@@ -15,6 +15,7 @@ import HealingSheets from "./pages/HealingSheets";
 import Protocol from "./pages/Protocol";
 import Message from "./pages/Message";
 import Guidance from "./pages/Guidance";
+import Account from "./pages/Account";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -46,6 +47,15 @@ const App = () => (
             element={
               <RequireRole allow={["client", "admin"]}>
                 <Dashboard />
+              </RequireRole>
+            }
+          />
+
+          <Route
+            path="/account"
+            element={
+              <RequireRole allow={["client", "admin"]}>
+                <Account />
               </RequireRole>
             }
           />
@@ -114,7 +124,6 @@ const App = () => (
             }
           />
 
-          {/* NEW: Admin User Details */}
           <Route
             path="/admin/users/:id"
             element={
@@ -142,7 +151,6 @@ const App = () => (
             }
           />
 
-          {/* Check-in details */}
           <Route
             path="/admin/checkins/:id"
             element={

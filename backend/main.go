@@ -74,12 +74,12 @@ func main() {
 				return true
 			}
 			if strings.HasPrefix(origin, "capacitor://localhost") ||
-		strings.HasPrefix(origin, "ionic://localhost") ||
-		strings.HasPrefix(origin, "http://localhost") ||
-		strings.HasPrefix(origin, "https://localhost") ||
-		strings.HasPrefix(origin, "http://127.0.0.1") ||
-		strings.HasPrefix(origin, "https://127.0.0.1") {
-				   return true
+				strings.HasPrefix(origin, "ionic://localhost") ||
+				strings.HasPrefix(origin, "http://localhost") ||
+				strings.HasPrefix(origin, "https://localhost") ||
+				strings.HasPrefix(origin, "http://127.0.0.1") ||
+				strings.HasPrefix(origin, "https://127.0.0.1") {
+				return true
 			}
 			for _, o := range origins {
 				if origin == o {
@@ -182,6 +182,59 @@ func main() {
 		}
 
 		c.JSON(http.StatusOK, user)
+	})
+
+	api.GET("/me/details", func(c *gin.Context) {
+		uid := c.GetString("uid")
+
+		claimsAny, _ := c.Get("claims")
+		claims, _ := claimsAny.(map[string]interface{})
+
+		role := "client"
+		if v, ok := claims["role"].(string); ok && v != "" {
+			role = v
+		}
+
+		email := ""
+		if v, ok := claims["email"].(string); ok {
+			email = v
+		}
+
+		name := ""
+		if v, ok := claims["name"].(string); ok {
+			name = v
+		}
+
+		if email == "" {
+			u, err := FirebaseAuth.GetUser(c.Request.Context(), uid)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load firebase user"})
+				return
+			}
+			email = u.Email
+			name = u.DisplayName
+		}
+
+		if strings.TrimSpace(email) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "email missing"})
+			return
+		}
+
+		_, err := upsertUser(c.Request.Context(), uid, email, name, role)
+		if err != nil {
+			log.Printf("upsertUser failed uid=%s email=%s role=%s err=%v", uid, email, role, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert user"})
+			return
+		}
+
+		profile, err := getUserProfileByEmail(c.Request.Context(), email)
+		if err != nil {
+			log.Printf("getUserProfileByEmail failed email=%s err=%v", email, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user profile"})
+			return
+		}
+
+		c.JSON(http.StatusOK, profile)
 	})
 
 	// ✅ NEW: client can generate their own password reset link
