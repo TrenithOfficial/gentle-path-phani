@@ -54,22 +54,27 @@ func RegisterUploadsRoutes(r *gin.Engine, store UploadStore) {
 
 		rc, ct, err := store.Open(c.Request.Context(), objectPathFromFilename(filename))
 		if err != nil {
+			c.Error(err)
 			c.Status(http.StatusNotFound)
 			return
 		}
 		defer rc.Close()
 
-		// Fallback content type by extension
 		if ct == "" {
 			ext := strings.ToLower(filepath.Ext(filename))
 			ct = mime.TypeByExtension(ext)
 		}
-		if ct != "" {
-			c.Header("Content-Type", ct)
+		if ct == "" {
+			ct = "application/octet-stream"
 		}
 
-		c.Header("Content-Disposition", "inline; filename="+filename)
-		_, _ = io.Copy(c.Writer, rc)
+		c.Header("Content-Type", ct)
+		c.Header("Content-Disposition", "inline; filename="+strconv.Quote(filename))
+		c.Status(http.StatusOK)
+
+		if _, err := io.Copy(c.Writer, rc); err != nil {
+			c.Error(err)
+		}
 	})
 }
 
