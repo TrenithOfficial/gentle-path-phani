@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Leaf, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,45 +42,40 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // ✅ ADDED: debug logs
       console.log("LOGIN: submit clicked");
       console.log("API_BASE:", API_BASE);
 
+      const auth = getAuth();
+      await setPersistence(auth, browserSessionPersistence);
+
       const user = await login(email, password);
 
-      // ✅ ADDED: debug log
       console.log("LOGIN: firebase user uid:", user?.uid);
 
       const token = await user.getIdToken(true);
       console.log("ID_TOKEN:", token);
 
-      // ✅ ADDED: timeout + abort controller so iOS doesn’t hang forever
       console.log("LOGIN: calling /api/me ...");
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000); // 12 seconds
-clearTimeout(timeout); // ✅ no need abort controller for native http
+      const url = apiUrl("/api/me");
+      console.log("LOGIN: calling /api/me ...", url);
 
-const url = apiUrl("/api/me");
-console.log("LOGIN: calling /api/me ...", url);
+      const r = await httpGet(url, {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      });
 
-const r = await httpGet(url, {
-  Authorization: `Bearer ${token}`,
-  Accept: "application/json",
-});
+      console.log("LOGIN: /api/me status:", r.status);
+      console.log("LOGIN: /api/me data:", r.data);
 
-console.log("LOGIN: /api/me status:", r.status);
-console.log("LOGIN: /api/me data:", r.data);
+      if (r.status < 200 || r.status >= 300) {
+        throw new Error(
+          `Failed to load profile: ${r.status} ${
+            typeof r.data === "string" ? r.data : JSON.stringify(r.data)
+          }`
+        );
+      }
 
-if (r.status < 200 || r.status >= 300) {
-  throw new Error(
-    `Failed to load profile: ${r.status} ${
-      typeof r.data === "string" ? r.data : JSON.stringify(r.data)
-    }`
-  );
-}
-
-const me = r.data as any;
-
+      const me = r.data as any;
 
       navigate(me.role === "admin" ? "/admin" : "/dashboard");
 
@@ -88,7 +84,6 @@ const me = r.data as any;
         description: "You've successfully logged in.",
       });
     } catch (err: any) {
-      // ✅ ADDED: better message for timeout/abort
       const message =
         err?.name === "AbortError"
           ? "Server took too long to respond. Please try again."
@@ -142,7 +137,6 @@ const me = r.data as any;
         description: "Our support team will get back to you shortly.",
       });
 
-      // reset + close
       setSupportName("");
       setSupportEmail("");
       setSupportSubject("");
@@ -161,7 +155,6 @@ const me = r.data as any;
 
   return (
     <div className="min-h-screen gradient-hero flex flex-col">
-      {/* Header */}
       <div className="pt-16 pb-8 px-6 text-center">
         <div className="inline-flex w-16 h-16 rounded-full bg-primary/10 mb-6 items-center justify-center">
           <Leaf className="h-8 w-8 text-primary" />
@@ -172,7 +165,6 @@ const me = r.data as any;
         <p className="text-muted-foreground">Your guided journey to wellness</p>
       </div>
 
-      {/* Login */}
       <div className="flex-1 px-4 pb-8">
         <Card className="max-w-sm mx-auto">
           <CardHeader className="text-center pb-4">
@@ -244,7 +236,6 @@ const me = r.data as any;
         </Card>
       </div>
 
-      {/* Support Modal */}
       {showSupport && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
