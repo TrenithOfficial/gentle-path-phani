@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"log"
 	"mime"
 	"net/http"
 	"path/filepath"
@@ -52,10 +53,14 @@ func RegisterUploadsRoutes(r *gin.Engine, store UploadStore) {
 			return
 		}
 
-		rc, ct, err := store.Open(c.Request.Context(), objectPathFromFilename(filename))
+		objectPath := objectPathFromFilename(filename)
+
+		rc, ct, err := store.Open(c.Request.Context(), objectPath)
 		if err != nil {
-			c.Error(err)
-			c.Status(http.StatusNotFound)
+			log.Printf("UPLOAD OPEN FAILED filename=%s path=%s err=%v", filename, objectPath, err)
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 		defer rc.Close()
