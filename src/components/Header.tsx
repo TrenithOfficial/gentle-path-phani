@@ -41,6 +41,11 @@ export const Header = ({
 
   const isHome = location.pathname === "/dashboard" || location.pathname === "/";
   const hideLogout = location.pathname === "/login";
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
+  // Client dashboard keeps using prop-based menu.
+  // Admin pages always use profile dropdown so logout stays inside it.
+  const shouldShowProfileMenu = showProfileMenu || isAdminRoute;
 
   const [me, setMe] = useState<AppMe | null>(null);
 
@@ -55,7 +60,7 @@ export const Header = ({
   useEffect(() => {
     let cancelled = false;
 
-    if (!showProfileMenu) return;
+    if (!shouldShowProfileMenu) return;
 
     (async () => {
       try {
@@ -76,7 +81,7 @@ export const Header = ({
     return () => {
       cancelled = true;
     };
-  }, [showProfileMenu]);
+  }, [shouldShowProfileMenu]);
 
   const handleLogout = async () => {
     try {
@@ -164,8 +169,8 @@ export const Header = ({
             )}
           </div>
 
-          {/* Profile menu (Dashboard only) */}
-          {showProfileMenu && !hideLogout && (
+          {/* Profile menu for client dashboard + all admin pages */}
+          {shouldShowProfileMenu && !hideLogout && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -176,7 +181,7 @@ export const Header = ({
               <DropdownMenuContent align="end" className="w-64">
                 <div className="px-3 py-2">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {me?.name?.trim() || "Client"}
+                    {me?.name?.trim() || (isAdminRoute ? "Admin" : "Client")}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {me?.email || ""}
@@ -223,8 +228,8 @@ export const Header = ({
             </DropdownMenu>
           )}
 
-          {/* Mobile logout icon for pages WITHOUT profile menu (admin + client sub pages) */}
-          {!hideLogout && !showProfileMenu && (
+          {/* Only show standalone logout button on non-admin pages without profile menu */}
+          {!hideLogout && !shouldShowProfileMenu && (
             <Button
               variant="ghost"
               size="icon"
@@ -298,8 +303,8 @@ export const Header = ({
         </div>
       )}
 
-      {/* Desktop-only floating logout (mobile uses header icon to avoid overlap) */}
-      {!hideLogout && !showProfileMenu && (
+      {/* Desktop floating logout only for non-admin pages without profile menu */}
+      {!hideLogout && !shouldShowProfileMenu && (
         <button
           onClick={handleLogout}
           className="fixed bottom-5 right-5 z-[99999] hidden md:flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-xl hover:bg-red-700"
