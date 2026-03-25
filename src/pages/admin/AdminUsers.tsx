@@ -164,7 +164,6 @@ const AdminUsers = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  // Set timezone default on create modal open
   useEffect(() => {
     if (!open) return;
     if (newTimezone.trim() === "") {
@@ -185,6 +184,48 @@ const AdminUsers = () => {
       return name.includes(q) || email.includes(q);
     });
   }, [clients, searchQuery]);
+
+  const isEditFormValid = useMemo(() => {
+    const email = editEmail.trim();
+    const displayName = editName.trim();
+    const firstName = editFirstName.trim();
+    const lastName = editLastName.trim();
+    const age = editAge.trim();
+    const gender = editGender.trim();
+    const phoneNumber = editPhoneNumber.trim();
+    const timezone = editTimezone.trim();
+    const address = editAddress.trim();
+
+    if (
+      !email ||
+      !displayName ||
+      !firstName ||
+      !lastName ||
+      !age ||
+      !gender ||
+      !phoneNumber ||
+      !timezone ||
+      !address
+    ) {
+      return false;
+    }
+
+    if (!Number.isFinite(Number(age))) {
+      return false;
+    }
+
+    return true;
+  }, [
+    editEmail,
+    editName,
+    editFirstName,
+    editLastName,
+    editAge,
+    editGender,
+    editPhoneNumber,
+    editTimezone,
+    editAddress,
+  ]);
 
   const onCreate = async () => {
     const email = newEmail.trim().toLowerCase();
@@ -268,7 +309,6 @@ const AdminUsers = () => {
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Failed to load client details");
-      // keep modal open but user can close
     } finally {
       setEditLoading(false);
     }
@@ -675,12 +715,12 @@ const AdminUsers = () => {
           ) : (
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label>Email</Label>
+                <Label>Email *</Label>
                 <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
               </div>
 
               <div className="space-y-2">
-                <Label>Display Name</Label>
+                <Label>Display Name *</Label>
                 <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
               </div>
 
@@ -691,22 +731,22 @@ const AdminUsers = () => {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>First Name</Label>
+                  <Label>First Name *</Label>
                   <Input value={editFirstName} onChange={(e) => setEditFirstName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Last Name</Label>
+                  <Label>Last Name *</Label>
                   <Input value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Age</Label>
+                  <Label>Age *</Label>
                   <Input value={editAge} onChange={(e) => setEditAge(e.target.value)} inputMode="numeric" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Gender</Label>
+                  <Label>Gender *</Label>
                   <select
                     value={editGender}
                     onChange={(e) => setEditGender(e.target.value)}
@@ -734,18 +774,18 @@ const AdminUsers = () => {
                   </select>
                 </div>
                 <div className="space-y-2 sm:col-span-2">
-                  <Label>Phone Number</Label>
+                  <Label>Phone Number *</Label>
                   <Input value={editPhoneNumber} onChange={(e) => setEditPhoneNumber(e.target.value)} />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Timezone</Label>
+                  <Label>Timezone *</Label>
                   <Input value={editTimezone} onChange={(e) => setEditTimezone(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Address</Label>
+                  <Label>Address *</Label>
                   <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
                 </div>
               </div>
@@ -783,11 +823,21 @@ const AdminUsers = () => {
                 <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
               </div>
 
+              {!isEditFormValid && (
+                <p className="text-sm text-muted-foreground">
+                  Fill all marked details to enable saving.
+                </p>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={() => setEditOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button variant="healing" onClick={saveEdit} disabled={saving || !editEmail.trim()}>
+                <Button
+                  variant="healing"
+                  onClick={saveEdit}
+                  disabled={saving || !isEditFormValid}
+                >
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </div>
