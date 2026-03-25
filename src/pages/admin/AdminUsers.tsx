@@ -30,6 +30,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const AdminUsers = () => {
   const navigate = useNavigate();
 
@@ -185,6 +187,49 @@ const AdminUsers = () => {
     });
   }, [clients, searchQuery]);
 
+  const isCreateFormValid = useMemo(() => {
+    const email = newEmail.trim().toLowerCase();
+    const firstName = newFirstName.trim();
+    const lastName = newLastName.trim();
+    const age = newAge.trim();
+    const gender = newGender.trim();
+    const phoneNumber = newPhoneNumber.trim();
+    const timezone = newTimezone.trim();
+    const address = newAddress.trim();
+
+    if (
+      !email ||
+      !firstName ||
+      !lastName ||
+      !age ||
+      !gender ||
+      !phoneNumber ||
+      !timezone ||
+      !address
+    ) {
+      return false;
+    }
+
+    if (!emailRegex.test(email)) {
+      return false;
+    }
+
+    if (!Number.isFinite(Number(age))) {
+      return false;
+    }
+
+    return true;
+  }, [
+    newEmail,
+    newFirstName,
+    newLastName,
+    newAge,
+    newGender,
+    newPhoneNumber,
+    newTimezone,
+    newAddress,
+  ]);
+
   const isEditFormValid = useMemo(() => {
     const email = editEmail.trim();
     const displayName = editName.trim();
@@ -210,6 +255,10 @@ const AdminUsers = () => {
       return false;
     }
 
+    if (!emailRegex.test(email.toLowerCase())) {
+      return false;
+    }
+
     if (!Number.isFinite(Number(age))) {
       return false;
     }
@@ -229,8 +278,11 @@ const AdminUsers = () => {
 
   const onCreate = async () => {
     const email = newEmail.trim().toLowerCase();
-    const name = newName.trim();
-    if (!email) return;
+    const displayName = newName.trim();
+    const firstName = newFirstName.trim();
+    const lastName = newLastName.trim();
+
+    if (!isCreateFormValid) return;
 
     const ageVal = newAge.trim();
     const ageNum =
@@ -240,29 +292,32 @@ const AdminUsers = () => {
       return;
     }
 
+    const finalDisplayName =
+      displayName || `${firstName} ${lastName}`.trim();
+
     setSaving(true);
     try {
       await createAdminUser({
         email,
-        name,
+        name: finalDisplayName,
         active: newActive,
 
-        firstName: newFirstName,
-        lastName: newLastName,
+        firstName,
+        lastName,
         age: ageNum,
-        gender: newGender,
+        gender: newGender.trim(),
 
         phoneCountryCode: newPhoneCountryCode,
-        phoneNumber: newPhoneNumber,
+        phoneNumber: newPhoneNumber.trim(),
 
-        timezone: newTimezone,
-        address: newAddress,
+        timezone: newTimezone.trim(),
+        address: newAddress.trim(),
 
-        emergencyContactName: newEmergencyContactName,
+        emergencyContactName: newEmergencyContactName.trim(),
         emergencyContactPhoneCountryCode: newEmergencyContactPhoneCountryCode,
-        emergencyContactPhoneNumber: newEmergencyContactPhoneNumber,
+        emergencyContactPhoneNumber: newEmergencyContactPhoneNumber.trim(),
 
-        notes: newNotes,
+        notes: newNotes.trim(),
       });
 
       setOpen(false);
@@ -584,32 +639,47 @@ const AdminUsers = () => {
           <div className="space-y-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>First Name</Label>
+                <Label>First Name *</Label>
                 <Input value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label>Last Name</Label>
+                <Label>Last Name *</Label>
                 <Input value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label>Email</Label>
-              <Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="client@email.com" />
+              <Label>Email *</Label>
+              <Input
+                type="email"
+                inputMode="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="client@email.com"
+              />
+              {newEmail.trim() !== "" && !emailRegex.test(newEmail.trim().toLowerCase()) && (
+                <p className="text-sm text-muted-foreground">
+                  Enter a valid email address.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
               <Label>Display Name (optional)</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="If empty, First + Last will be used" />
+              <Input
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="If empty, First + Last will be used"
+              />
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Age</Label>
+                <Label>Age *</Label>
                 <Input value={newAge} onChange={(e) => setNewAge(e.target.value)} inputMode="numeric" />
               </div>
               <div className="space-y-2">
-                <Label>Gender</Label>
+                <Label>Gender *</Label>
                 <select
                   value={newGender}
                   onChange={(e) => setNewGender(e.target.value)}
@@ -637,15 +707,19 @@ const AdminUsers = () => {
                 </select>
               </div>
               <div className="space-y-2 sm:col-span-2">
-                <Label>Phone Number</Label>
+                <Label>Phone Number *</Label>
                 <Input value={newPhoneNumber} onChange={(e) => setNewPhoneNumber(e.target.value)} />
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Timezone</Label>
-                <Input value={newTimezone} onChange={(e) => setNewTimezone(e.target.value)} placeholder="America/New_York" />
+                <Label>Timezone *</Label>
+                <Input
+                  value={newTimezone}
+                  onChange={(e) => setNewTimezone(e.target.value)}
+                  placeholder="America/New_York"
+                />
               </div>
               <div className="flex items-center gap-2 pt-7">
                 <Checkbox checked={newActive} onCheckedChange={(v) => setNewActive(Boolean(v))} />
@@ -654,7 +728,7 @@ const AdminUsers = () => {
             </div>
 
             <div className="space-y-2">
-              <Label>Address</Label>
+              <Label>Address *</Label>
               <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Full address" />
             </div>
 
@@ -681,7 +755,10 @@ const AdminUsers = () => {
                 </div>
                 <div className="space-y-2 sm:col-span-2">
                   <Label>Emergency Contact Phone</Label>
-                  <Input value={newEmergencyContactPhoneNumber} onChange={(e) => setNewEmergencyContactPhoneNumber(e.target.value)} />
+                  <Input
+                    value={newEmergencyContactPhoneNumber}
+                    onChange={(e) => setNewEmergencyContactPhoneNumber(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -691,11 +768,21 @@ const AdminUsers = () => {
               <Textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
             </div>
 
+            {!isCreateFormValid && (
+              <p className="text-sm text-muted-foreground">
+                Fill all marked details with a valid email to enable creating.
+              </p>
+            )}
+
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button variant="healing" onClick={onCreate} disabled={saving || !newEmail.trim()}>
+              <Button
+                variant="healing"
+                onClick={onCreate}
+                disabled={saving || !isCreateFormValid}
+              >
                 {saving ? "Creating..." : "Create"}
               </Button>
             </div>
@@ -716,7 +803,7 @@ const AdminUsers = () => {
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label>Email *</Label>
-                <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+                <Input type="email" inputMode="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
               </div>
 
               <div className="space-y-2">
