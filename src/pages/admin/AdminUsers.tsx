@@ -629,8 +629,6 @@ const AdminUsers = () => {
         </div>
       </main>
 
-      // ONLY showing the changed CREATE FORM section — rest of your file stays exactly the same
-
       {/* Add Client */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
@@ -642,19 +640,11 @@ const AdminUsers = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>First Name *</Label>
-                <Input
-                  value={newFirstName}
-                  onChange={(e) => setNewFirstName(e.target.value)}
-                  className={!newFirstName.trim() ? "border-red-500" : ""}
-                />
+                <Input value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Last Name *</Label>
-                <Input
-                  value={newLastName}
-                  onChange={(e) => setNewLastName(e.target.value)}
-                  className={!newLastName.trim() ? "border-red-500" : ""}
-                />
+                <Input value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
               </div>
             </div>
 
@@ -666,11 +656,6 @@ const AdminUsers = () => {
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
                 placeholder="client@email.com"
-                className={
-                  newEmail && !emailRegex.test(newEmail.trim().toLowerCase())
-                    ? "border-red-500 focus-visible:ring-red-500"
-                    : ""
-                }
               />
               {newEmail.trim() !== "" && !emailRegex.test(newEmail.trim().toLowerCase()) && (
                 <p className="text-sm text-muted-foreground">
@@ -691,25 +676,14 @@ const AdminUsers = () => {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Age *</Label>
-                <Input
-                  value={newAge}
-                  onChange={(e) => setNewAge(e.target.value)}
-                  inputMode="numeric"
-                  className={
-                    !newAge.trim() || !Number.isFinite(Number(newAge))
-                      ? "border-red-500"
-                      : ""
-                  }
-                />
+                <Input value={newAge} onChange={(e) => setNewAge(e.target.value)} inputMode="numeric" />
               </div>
               <div className="space-y-2">
                 <Label>Gender *</Label>
                 <select
                   value={newGender}
                   onChange={(e) => setNewGender(e.target.value)}
-                  className={`h-10 w-full rounded-md px-3 text-sm ${
-                    !newGender ? "border-red-500" : "border border-input"
-                  }`}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
                   <option value="">Select</option>
                   {genderOptions.map((g) => (
@@ -734,11 +708,7 @@ const AdminUsers = () => {
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Phone Number *</Label>
-                <Input
-                  value={newPhoneNumber}
-                  onChange={(e) => setNewPhoneNumber(e.target.value)}
-                  className={!newPhoneNumber.trim() ? "border-red-500" : ""}
-                />
+                <Input value={newPhoneNumber} onChange={(e) => setNewPhoneNumber(e.target.value)} />
               </div>
             </div>
 
@@ -749,7 +719,6 @@ const AdminUsers = () => {
                   value={newTimezone}
                   onChange={(e) => setNewTimezone(e.target.value)}
                   placeholder="America/New_York"
-                  className={!newTimezone.trim() ? "border-red-500" : ""}
                 />
               </div>
               <div className="flex items-center gap-2 pt-7">
@@ -760,15 +729,44 @@ const AdminUsers = () => {
 
             <div className="space-y-2">
               <Label>Address *</Label>
-              <Input
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                placeholder="Full address"
-                className={!newAddress.trim() ? "border-red-500" : ""}
-              />
+              <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Full address" />
             </div>
 
-            {/* rest unchanged */}
+            <div className="space-y-3">
+              <div className="text-sm font-medium">Emergency Contact (optional)</div>
+
+              <div className="space-y-2">
+                <Label>Emergency Contact Name</Label>
+                <Input value={newEmergencyContactName} onChange={(e) => setNewEmergencyContactName(e.target.value)} />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div className="space-y-2 sm:col-span-1">
+                  <Label>Country Code</Label>
+                  <select
+                    value={newEmergencyContactPhoneCountryCode}
+                    onChange={(e) => setNewEmergencyContactPhoneCountryCode(e.target.value)}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {phoneCountryOptions.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Emergency Contact Phone</Label>
+                  <Input
+                    value={newEmergencyContactPhoneNumber}
+                    onChange={(e) => setNewEmergencyContactPhoneNumber(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Notes</Label>
+              <Textarea value={newNotes} onChange={(e) => setNewNotes(e.target.value)} />
+            </div>
 
             {!isCreateFormValid && (
               <p className="text-sm text-muted-foreground">
