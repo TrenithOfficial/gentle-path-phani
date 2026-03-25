@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Send, MessageSquare, Search, CheckCheck, UserRound } from "lucide-react";
+import {
+  Send,
+  MessageSquare,
+  Search,
+  CheckCheck,
+  UserRound,
+  ArrowLeft,
+} from "lucide-react";
 import { getAuth } from "firebase/auth";
 
 import { Header } from "@/components/Header";
@@ -79,6 +86,7 @@ export default function AdminMessages() {
 
   const [filter, setFilter] = useState<"all" | "active" | "inactive">("all");
   const [q, setQ] = useState("");
+  const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
@@ -114,9 +122,13 @@ export default function AdminMessages() {
       const data = (await res.json()) as ThreadSummary[];
       setThreads(data);
 
-      // pick first thread automatically if nothing selected
       if (!selectedUserId && data.length > 0) {
         setSelectedUserId(data[0].userId);
+      }
+
+      if (selectedUserId && !data.some((t) => t.userId === selectedUserId)) {
+        setSelectedUserId(data.length > 0 ? data[0].userId : null);
+        setMobileChatOpen(false);
       }
     } catch (err: any) {
       toast({
@@ -129,8 +141,10 @@ export default function AdminMessages() {
     }
   };
 
-  // CHANGED: return data so the poll can decide if it should mark read
-  const loadMessages = async (userId: string, silent = false): Promise<ChatMessage[] | null> => {
+  const loadMessages = async (
+    userId: string,
+    silent = false
+  ): Promise<ChatMessage[] | null> => {
     if (!silent) setLoadingMessages(true);
     try {
       const res = await authedFetch(`/api/admin/chat/threads/${userId}/messages`);
@@ -155,7 +169,9 @@ export default function AdminMessages() {
 
   const markReadAdmin = async (userId: string) => {
     try {
-      await authedFetch(`/api/admin/chat/threads/${userId}/read`, { method: "POST" });
+      await authedFetch(`/api/admin/chat/threads/${userId}/read`, {
+        method: "POST",
+      });
     } catch {
       // ignore
     }
@@ -171,7 +187,6 @@ export default function AdminMessages() {
         if (selectedUserId) {
           const data = await loadMessages(selectedUserId, true);
 
-          // NEW: if client sent messages while admin is viewing, mark read immediately
           const hasUnreadClient = (data || []).some(
             (m) => m.senderRole === "client" && !m.readAtAdmin
           );
@@ -195,7 +210,6 @@ export default function AdminMessages() {
       await loadMessages(selectedUserId);
       await markReadAdmin(selectedUserId);
       scrollToBottom(false);
-      // refresh thread list to clear unread badge
       await loadThreads(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -210,6 +224,7 @@ export default function AdminMessages() {
 
   const onSelectThread = (t: ThreadSummary) => {
     setSelectedUserId(t.userId);
+    setMobileChatOpen(true);
   };
 
   const onSend = async () => {
@@ -221,6 +236,7 @@ export default function AdminMessages() {
 
     const tempId = `temp-${Date.now()}`;
     const now = new Date().toISOString();
+
     setMessages((prev) => [
       ...prev,
       {
@@ -234,15 +250,20 @@ export default function AdminMessages() {
         readAtAdmin: now,
       },
     ]);
+
     setDraft("");
     scrollToBottom(true);
 
     try {
-      const res = await authedFetch(`/api/admin/chat/threads/${selectedUserId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
-      });
+      const res = await authedFetch(
+        `/api/admin/chat/threads/${selectedUserId}/messages`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ body }),
+        }
+      );
+
       if (!res.ok) {
         const text = await res.text();
         throw new Error(text || `Failed (${res.status})`);
@@ -306,182 +327,234 @@ export default function AdminMessages() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-4">
-          {/* Left: client list */}
-          <Card variant="elevated" className="overflow-hidden">
-            <CardContent className="p-0">
-              <div className="p-3 border-b border-border/60 bg-card">
-                <div className="relative">
-                  <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    placeholder="Search clients"
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-
-              <div className="max-h-[70vh] overflow-auto">
-                {loadingThreads ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">Loading clients…</div>
-                ) : filteredThreads.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">No clients found</div>
-                ) : (
-                  filteredThreads.map((t) => {
-                    const active = !!t.startDate;
-                    const selected = t.userId === selectedUserId;
-
-                    return (
-                      <button
-                        key={t.userId}
-                        onClick={() => onSelectThread(t)}
-                        className={
-                          "w-full text-left px-3 py-3 border-b border-border/40 hover:bg-muted/30 transition " +
-                          (selected ? "bg-muted/40" : "")
-                        }
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                            <UserRound className="h-4 w-4 text-primary" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-foreground truncate">
-                                {displayName(t)}
-                              </p>
-                              <span
-                                className={
-                                  "text-[11px] px-2 py-0.5 rounded-full border " +
-                                  (active
-                                    ? "border-sage/30 bg-sage/10 text-sage"
-                                    : "border-muted-foreground/20 bg-muted/20 text-muted-foreground")
-                                }
-                              >
-                                {active ? "Active" : "Inactive"}
-                              </span>
-                            </div>
-
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {shortPreview(t.lastBody) || "No messages yet"}
-                            </p>
-                          </div>
-
-                          {t.unreadAdmin > 0 && (
-                            <div className="ml-2 shrink-0">
-                              <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] text-[11px] rounded-full bg-primary text-primary-foreground">
-                                {t.unreadAdmin}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Right: chat */}
-          <Card variant="elevated" className="overflow-hidden">
-            <CardContent className="p-0">
-              <div className="p-3 border-b border-border/60 bg-card">
-                {selectedThread ? (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-warm-terracotta/10 flex items-center justify-center">
-                      <MessageSquare className="h-5 w-5 text-warm-terracotta" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {displayName(selectedThread)}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {selectedThread.email}
-                      </p>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="ml-auto"
-                      onClick={() => selectedUserId && void loadMessages(selectedUserId)}
-                      disabled={loadingMessages || !selectedUserId}
-                    >
-                      Refresh
-                    </Button>
+          <div className={`${mobileChatOpen ? "hidden" : "block"} lg:block`}>
+            <Card variant="elevated" className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-3 border-b border-border/60 bg-card">
+                  <div className="relative">
+                    <Search className="h-4 w-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Input
+                      value={q}
+                      onChange={(e) => setQ(e.target.value)}
+                      placeholder="Search clients"
+                      className="pl-9"
+                    />
                   </div>
-                ) : (
-                  <div className="py-2 text-sm text-muted-foreground">Select a client to start</div>
-                )}
-              </div>
+                </div>
 
-              <div
-                ref={scrollerRef}
-                className="h-[58vh] overflow-auto px-3 py-4 space-y-2 bg-muted/10"
-                onClick={() => selectedUserId && void markReadAdmin(selectedUserId)}
-              >
-                {!selectedThread ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">No thread selected</div>
-                ) : loadingMessages ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">Loading chat…</div>
-                ) : messages.length === 0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">No messages yet</div>
-                ) : (
-                  messages.map((m) => {
-                    const mine = m.senderRole === "admin";
-                    const time = formatTime(m.createdAt);
-                    return (
-                      <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                        <div
+                <div className="max-h-[70vh] overflow-auto lg:max-h-[70vh]">
+                  {loadingThreads ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      Loading clients…
+                    </div>
+                  ) : filteredThreads.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      No clients found
+                    </div>
+                  ) : (
+                    filteredThreads.map((t) => {
+                      const active = !!t.startDate;
+                      const selected = t.userId === selectedUserId;
+
+                      return (
+                        <button
+                          key={t.userId}
+                          onClick={() => onSelectThread(t)}
                           className={
-                            "max-w-[82%] rounded-2xl px-3 py-2 shadow-soft border " +
-                            (mine
-                              ? "bg-primary text-primary-foreground border-primary/20"
-                              : "bg-card text-foreground border-border/60")
+                            "w-full text-left px-3 py-3 border-b border-border/40 hover:bg-muted/30 transition " +
+                            (selected ? "bg-muted/40" : "")
                           }
                         >
-                          <p className="text-sm whitespace-pre-line break-words">{m.body}</p>
-                          <div className={`mt-1 flex items-center gap-2 ${mine ? "justify-end" : "justify-start"}`}>
-                            <span className={`text-[11px] ${mine ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                              {time}
-                            </span>
-                            {mine && (
-                              <span className="text-[11px] text-primary-foreground/80 inline-flex items-center gap-1">
-                                <CheckCheck className="h-3 w-3" />
-                                {m.readAtClient ? "Seen" : "Delivered"}
-                              </span>
+                          <div className="flex items-start gap-3">
+                            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <UserRound className="h-4 w-4 text-primary" />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                  {displayName(t)}
+                                </p>
+                                <span
+                                  className={
+                                    "text-[11px] px-2 py-0.5 rounded-full border " +
+                                    (active
+                                      ? "border-sage/30 bg-sage/10 text-sage"
+                                      : "border-muted-foreground/20 bg-muted/20 text-muted-foreground")
+                                  }
+                                >
+                                  {active ? "Active" : "Inactive"}
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {shortPreview(t.lastBody) || "No messages yet"}
+                              </p>
+                            </div>
+
+                            {t.unreadAdmin > 0 && (
+                              <div className="ml-2 shrink-0">
+                                <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] text-[11px] rounded-full bg-primary text-primary-foreground">
+                                  {t.unreadAdmin}
+                                </span>
+                              </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              <div className="p-3 border-t border-border/60 bg-card">
-                <div className="flex gap-2 items-end">
-                  <Textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    placeholder={selectedThread ? "Type a message…" : "Select a client to message"}
-                    className="min-h-[56px] max-h-[140px]"
-                    disabled={!selectedThread}
-                  />
-                  <Button
-                    variant="healing"
-                    className="h-[56px] px-4"
-                    onClick={() => void onSend()}
-                    disabled={!selectedThread || sending || !draft.trim()}
-                    title={!selectedThread ? "Select a client" : !draft.trim() ? "Type a message" : "Send"}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                        </button>
+                      );
+                    })
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className={`${mobileChatOpen ? "block" : "hidden"} lg:block`}>
+            <Card variant="elevated" className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-3 border-b border-border/60 bg-card">
+                  {selectedThread ? (
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 lg:hidden"
+                        onClick={() => setMobileChatOpen(false)}
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+
+                      <div className="w-10 h-10 rounded-full bg-warm-terracotta/10 flex items-center justify-center">
+                        <MessageSquare className="h-5 w-5 text-warm-terracotta" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {displayName(selectedThread)}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {selectedThread.email}
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto"
+                        onClick={() =>
+                          selectedUserId && void loadMessages(selectedUserId)
+                        }
+                        disabled={loadingMessages || !selectedUserId}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="py-2 text-sm text-muted-foreground">
+                      Select a client to start
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  ref={scrollerRef}
+                  className="h-[58vh] overflow-auto px-3 py-4 space-y-2 bg-muted/10"
+                  onClick={() => selectedUserId && void markReadAdmin(selectedUserId)}
+                >
+                  {!selectedThread ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      No thread selected
+                    </div>
+                  ) : loadingMessages ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      Loading chat…
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      No messages yet
+                    </div>
+                  ) : (
+                    messages.map((m) => {
+                      const mine = m.senderRole === "admin";
+                      const time = formatTime(m.createdAt);
+
+                      return (
+                        <div
+                          key={m.id}
+                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                        >
+                          <div
+                            className={
+                              "max-w-[82%] rounded-2xl px-3 py-2 shadow-soft border " +
+                              (mine
+                                ? "bg-primary text-primary-foreground border-primary/20"
+                                : "bg-card text-foreground border-border/60")
+                            }
+                          >
+                            <p className="text-sm whitespace-pre-line break-words">
+                              {m.body}
+                            </p>
+                            <div
+                              className={`mt-1 flex items-center gap-2 ${
+                                mine ? "justify-end" : "justify-start"
+                              }`}
+                            >
+                              <span
+                                className={`text-[11px] ${
+                                  mine
+                                    ? "text-primary-foreground/80"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                {time}
+                              </span>
+                              {mine && (
+                                <span className="text-[11px] text-primary-foreground/80 inline-flex items-center gap-1">
+                                  <CheckCheck className="h-3 w-3" />
+                                  {m.readAtClient ? "Seen" : "Delivered"}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-3 border-t border-border/60 bg-card">
+                  <div className="flex gap-2 items-end">
+                    <Textarea
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      placeholder={
+                        selectedThread
+                          ? "Type a message…"
+                          : "Select a client to message"
+                      }
+                      className="min-h-[56px] max-h-[140px]"
+                      disabled={!selectedThread}
+                    />
+                    <Button
+                      variant="healing"
+                      className="h-[56px] px-4"
+                      onClick={() => void onSend()}
+                      disabled={!selectedThread || sending || !draft.trim()}
+                      title={
+                        !selectedThread
+                          ? "Select a client"
+                          : !draft.trim()
+                          ? "Type a message"
+                          : "Send"
+                      }
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
 
