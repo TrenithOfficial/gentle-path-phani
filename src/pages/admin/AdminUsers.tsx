@@ -863,7 +863,7 @@ const AdminUsers = () => {
                 Cancel
               </Button>
               <Button variant="destructive" onClick={confirmDelete} disabled={saving}>
-                {saving ? "Deleting..." : "Delete"}
+                {saving ? "Deleting...." : "Delete"}
               </Button>
             </div>
           </div>
