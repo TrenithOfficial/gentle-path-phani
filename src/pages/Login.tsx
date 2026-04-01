@@ -157,7 +157,7 @@ const Login = () => {
     <div className="min-h-screen gradient-hero flex flex-col">
       <div className="pt-16 pb-8 px-6 text-center">
         <div className="inline-flex w-16 h-16 rounded-full bg-primary/10 mb-6 items-center justify-center">
-          <Leaf className="h-8 w-8 text-primary" />
+          <img src="/icon.png" alt="Harmonic Healing Logo" className="h-8 w-8" />
         </div>
         <h1 className="font-serif text-3xl font-semibold mb-2">
           Harmonic Healing Solutions
