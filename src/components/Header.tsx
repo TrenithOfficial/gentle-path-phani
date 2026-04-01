@@ -92,6 +92,48 @@ export const Header = ({
     }
   };
 
+  const handleChangePassword = async () => {
+    try {
+      if (onChangePasswordClick) {
+        onChangePasswordClick();
+        return;
+      }
+
+      const user = getAuth().currentUser;
+
+      if (!user) {
+        throw new Error("Not authenticated");
+      }
+
+      const token = await user.getIdToken();
+
+      const res = await fetch(`${API_BASE}/api/me/password-reset-link`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to generate password reset link");
+      }
+
+      const data = await res.json();
+
+      if (!data?.resetLink) {
+        throw new Error("Reset link missing");
+      }
+
+      window.open(data.resetLink, "_blank", "noopener,noreferrer");
+    } catch (err: any) {
+      toast({
+        title: "Change password failed",
+        description: err?.message || "Could not open password reset link.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const submitSupport = async () => {
     if (!supportName || !supportEmail || !supportSubject || !supportMessage) {
       toast({
@@ -169,7 +211,6 @@ export const Header = ({
             )}
           </div>
 
-          {/* Profile menu for client dashboard + all admin pages */}
           {shouldShowProfileMenu && !hideLogout && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -190,7 +231,6 @@ export const Header = ({
 
                 <DropdownMenuSeparator />
 
-                {/* Show only for client, hide for admin */}
                 {!isAdminRoute && (
                   <>
                     <DropdownMenuItem
@@ -202,13 +242,7 @@ export const Header = ({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => {
-                        if (onChangePasswordClick) {
-                          onChangePasswordClick();
-                        } else {
-                          navigate("/change-password");
-                        }
-                      }}
+                      onClick={handleChangePassword}
                       className="cursor-pointer"
                     >
                       <KeyRound className="h-4 w-4 mr-2" />
@@ -236,7 +270,6 @@ export const Header = ({
             </DropdownMenu>
           )}
 
-          {/* Only show standalone logout button on non-admin pages without profile menu */}
           {!hideLogout && !shouldShowProfileMenu && (
             <Button
               variant="ghost"
@@ -251,7 +284,6 @@ export const Header = ({
         </div>
       </header>
 
-      {/* Support Modal */}
       {supportOpen && (
         <div
           className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 px-4"
@@ -310,7 +342,6 @@ export const Header = ({
           </div>
         </div>
       )}
-
     </>
   );
 };
