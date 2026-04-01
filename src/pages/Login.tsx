@@ -160,7 +160,7 @@ const Login = () => {
           <Leaf className="h-8 w-8 text-primary" />
         </div>
         <h1 className="font-serif text-3xl font-semibold mb-2">
-          90-Day Healing
+          Harmonic Healing Solutions
         </h1>
         <p className="text-muted-foreground">Your guided journey to wellness</p>
       </div>
