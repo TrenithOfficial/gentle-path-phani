@@ -79,7 +79,9 @@ spec:
         - name: UPLOADS_BUCKET
           value: gentle-path-uploads-diesel-media-485505-e2
         - name: CORS_ORIGINS
-          value: https://gentlepath.trenith.com,http://localhost:8080
+          value: https://harmonichealingsolutions.com,https://www.harmonichealingsolutions.com,http://localhost:8080
+        - name: FRONTEND_ORIGIN
+          value: https://www.harmonichealingsolutions.com
         image: us-central1-docker.pkg.dev/diesel-media-485505-e2/gentle-path-repo/gentle-path-backend:latest
         name: gentle-path-api-1
         ports:
