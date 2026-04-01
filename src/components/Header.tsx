@@ -203,8 +203,11 @@ export const Header = ({
 
                     <DropdownMenuItem
                       onClick={() => {
-                        if (onChangePasswordClick) onChangePasswordClick();
-                        else alert("Next step: we will wire Change Password link");
+                        if (onChangePasswordClick) {
+                          onChangePasswordClick();
+                        } else {
+                          navigate("/change-password");
+                        }
                       }}
                       className="cursor-pointer"
                     >
