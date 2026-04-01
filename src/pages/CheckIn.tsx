@@ -159,7 +159,7 @@ const CheckIn = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <Header title="Daily Check-in" showBack />
+      <Header title="Daily Check-in" showBack showProfileMenu />
 
       <main className="container max-w-lg mx-auto px-4 py-6">
         <Card variant="glass" className="mb-6 animate-fade-in">

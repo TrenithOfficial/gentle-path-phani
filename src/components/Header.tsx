@@ -308,16 +308,6 @@ export const Header = ({
         </div>
       )}
 
-      {/* Desktop floating logout only for non-admin pages without profile menu */}
-      {!hideLogout && !shouldShowProfileMenu && (
-        <button
-          onClick={handleLogout}
-          className="fixed bottom-5 right-5 z-[99999] hidden md:flex items-center gap-2 rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-xl hover:bg-red-700"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
-      )}
     </>
   );
 };
