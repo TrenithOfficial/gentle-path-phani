@@ -128,7 +128,7 @@ const Signup = () => {
       const finalDisplayName =
         displayName.trim() || `${firstName.trim()} ${lastName.trim()}`.trim();
 
-      const res = await fetch("/api/signup-requests", {
+      const res = await fetch("https://gentle-path-api-883951071472.us-central1.run.app/api/signup-requests", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
