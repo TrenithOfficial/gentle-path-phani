@@ -3,10 +3,11 @@ import {
   FileText,
   Pill,
   MessageSquare,
-  Volume2,
+  Play,
+  Pause,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
@@ -16,8 +17,8 @@ import { Button } from "@/components/ui/button";
 
 import { getCurrentDay, getPhaseForDay } from "@/types/healing";
 import { fetchMe } from "@/lib/me";
-import { fetchGuidanceToday } from "@/lib/content";
-import { fetchMyPasswordResetLink } from "@/lib/passwordReset"; // ✅ NEW
+import { fetchGuidanceToday, resolveFileUrl } from "@/lib/content";
+import { fetchMyPasswordResetLink } from "@/lib/passwordReset";
 
 type TodayGuidance = {
   title: string;
@@ -32,6 +33,9 @@ export default function Dashboard() {
 
   const [name, setName] = useState<string>("");
   const [startDate, setStartDate] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [todaysGuidance, setTodaysGuidance] = useState<TodayGuidance>({
     title: "Loading...",
@@ -45,14 +49,12 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       try {
-        // 1) Load current user (name + startDate)
         const me = await fetchMe();
         if (cancelled) return;
 
         setName(me?.name || "");
         setStartDate(me?.startDate || null);
 
-        // 2) Load today's guidance
         const today = await fetchGuidanceToday();
         if (cancelled) return;
 
@@ -81,8 +83,46 @@ export default function Dashboard() {
 
     return () => {
       cancelled = true;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
+
+  const audioSrc = useMemo(() => {
+    return todaysGuidance.audioUrl ? resolveFileUrl(todaysGuidance.audioUrl) : "";
+  }, [todaysGuidance.audioUrl]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    if (!audioSrc) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const audio = new Audio(audioSrc);
+    audioRef.current = audio;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [audioSrc]);
 
   const currentDay = useMemo(() => {
     return startDate ? getCurrentDay(startDate) : 1;
@@ -124,10 +164,20 @@ export default function Dashboard() {
     },
   ];
 
-  const openAudio = () => {
-    const url = todaysGuidance.audioUrl?.trim();
-    if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const toggleAudio = async () => {
+    if (!audioRef.current) return;
+
+    try {
+      if (audioRef.current.paused) {
+        await audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+    } catch (e) {
+      console.error(e);
+      setIsPlaying(false);
+      alert("Unable to play audio");
+    }
   };
 
   return (
@@ -191,19 +241,29 @@ export default function Dashboard() {
           style={{ animationDelay: "0.2s" }}
         >
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <CardTitle className="text-lg">Today's Guidance</CardTitle>
 
-              {!!todaysGuidance.audioUrl && (
+              {!!audioSrc && (
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={openAudio}
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={toggleAudio}
                   disabled={loading}
-                  title="Open audio"
+                  title={isPlaying ? "Pause audio" : "Play audio"}
                 >
-                  <Volume2 className="h-4 w-4" />
+                  {isPlaying ? (
+                    <>
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Play
+                    </>
+                  )}
                 </Button>
               )}
             </div>

@@ -99,6 +99,7 @@ func main() {
 	}
 
 	RegisterUploadsRoutes(r, store)
+	RegisterGuidanceAudioUploadsRoutes(r, store)
 
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
@@ -129,7 +130,7 @@ func main() {
 	RegisterChatRoutes(api)
 
 	RegisterContentRoutes(api)
-	RegisterAdminContentRoutes(api)
+	RegisterAdminContentRoutes(api, store)
 
 	RegisterHealingSheetRoutes(api)
 	RegisterAdminHealingSheetRoutes(api, store)

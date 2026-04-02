@@ -1,16 +1,19 @@
-import { useEffect, useState } from "react";
-import { Volume2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Play, Pause } from "lucide-react";
 
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchGuidanceToday, type ClientGuidanceRow } from "@/lib/content";
+import { fetchGuidanceToday, resolveFileUrl, type ClientGuidanceRow } from "@/lib/content";
 
 export default function Guidance() {
   const [loading, setLoading] = useState(true);
   const [guidance, setGuidance] = useState<ClientGuidanceRow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,13 +35,61 @@ export default function Guidance() {
 
     return () => {
       cancelled = true;
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     };
   }, []);
 
-  const openAudio = () => {
-    const url = guidance?.audioUrl?.trim();
-    if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
+  const audioSrc = useMemo(() => {
+    return guidance?.audioUrl ? resolveFileUrl(guidance.audioUrl) : "";
+  }, [guidance?.audioUrl]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    if (!audioSrc) {
+      setIsPlaying(false);
+      return;
+    }
+
+    const audio = new Audio(audioSrc);
+    audioRef.current = audio;
+
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+    };
+  }, [audioSrc]);
+
+  const toggleAudio = async () => {
+    if (!audioRef.current) return;
+
+    try {
+      if (audioRef.current.paused) {
+        await audioRef.current.play();
+      } else {
+        audioRef.current.pause();
+      }
+    } catch (e) {
+      console.error(e);
+      setIsPlaying(false);
+      alert("Unable to play audio");
+    }
   };
 
   return (
@@ -78,15 +129,25 @@ export default function Guidance() {
                   ) : null}
                 </div>
 
-                {!!guidance?.audioUrl && (
+                {!!audioSrc && (
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={openAudio}
-                    title="Open audio"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={toggleAudio}
+                    title={isPlaying ? "Pause audio" : "Play audio"}
                   >
-                    <Volume2 className="h-4 w-4" />
+                    {isPlaying ? (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Play
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

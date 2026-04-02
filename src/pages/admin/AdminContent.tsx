@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, FileUp, Trash2 } from "lucide-react";
+import { BookOpen, FileUp, Trash2, Upload, X } from "lucide-react";
 import { getAuth } from "firebase/auth";
 import { resolveFileUrl } from "@/lib/content";
 import { Header } from "@/components/Header";
@@ -32,7 +32,7 @@ type HealingSheetRow = {
   scope: "phase" | "personal";
   phaseId: number | null;
   userId: string | null;
-  url: string; // backend returns url (often like /uploads/healing-sheets/xyz.pdf)
+  url: string;
   uploadedAt: string;
 };
 
@@ -59,17 +59,10 @@ async function fetchAdminGuidance(): Promise<GuidanceRow[]> {
   return res.json();
 }
 
-async function upsertAdminGuidance(body: {
-  phaseId: number;
-  day: number;
-  title: string;
-  content: string;
-  audioUrl?: string | null;
-}): Promise<GuidanceRow> {
+async function upsertAdminGuidance(form: FormData): Promise<GuidanceRow> {
   const res = await authedFetch(apiUrl("/api/admin/guidance"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: form,
   });
   if (!res.ok) throw new Error(`Failed to save guidance: ${res.status} ${await res.text()}`);
   return res.json();
@@ -79,8 +72,9 @@ async function deleteAdminGuidance(id: string): Promise<void> {
   const res = await authedFetch(apiUrl(`/api/admin/guidance/${encodeURIComponent(id)}`), {
     method: "DELETE",
   });
-  if (!res.ok && res.status !== 204)
+  if (!res.ok && res.status !== 204) {
     throw new Error(`Failed to delete guidance: ${res.status} ${await res.text()}`);
+  }
 }
 
 async function fetchAdminUsersActive(): Promise<AdminUserRow[]> {
@@ -104,7 +98,6 @@ async function uploadAdminHealingSheet(form: FormData): Promise<HealingSheetRow>
   return res.json();
 }
 
-// ✅ NEW: delete healing sheet (admin)
 async function deleteAdminHealingSheet(id: string): Promise<void> {
   const res = await authedFetch(apiUrl(`/api/admin/healing-sheets/${encodeURIComponent(id)}`), {
     method: "DELETE",
@@ -117,14 +110,12 @@ async function deleteAdminHealingSheet(id: string): Promise<void> {
 
 function PhaseCard({
   phaseId,
-  title,
   subtitle,
   createdCount,
   onAdd,
   onEdit,
 }: {
   phaseId: number;
-  title: string;
   subtitle: string;
   createdCount: number;
   onAdd: () => void;
@@ -157,6 +148,13 @@ function PhaseCard({
   );
 }
 
+function audioLabelFromUrl(url?: string | null) {
+  if (!url) return "";
+  const clean = url.split("?")[0].split("#")[0];
+  const parts = clean.split("/");
+  return parts[parts.length - 1] || "Uploaded audio";
+}
+
 export default function AdminContent() {
   const navigate = useNavigate();
 
@@ -167,7 +165,6 @@ export default function AdminContent() {
   const [sheets, setSheets] = useState<HealingSheetRow[]>([]);
   const [clients, setClients] = useState<AdminUserRow[]>([]);
 
-  // Guidance modal
   const [guidanceOpen, setGuidanceOpen] = useState(false);
   const [gPhaseId, setGPhaseId] = useState<number>(1);
   const [gPhaseLocked, setGPhaseLocked] = useState<boolean>(true);
@@ -175,9 +172,10 @@ export default function AdminContent() {
   const [gTitle, setGTitle] = useState("");
   const [gContent, setGContent] = useState("");
   const [gAudioUrl, setGAudioUrl] = useState<string>("");
+  const [gAudioFile, setGAudioFile] = useState<File | null>(null);
+  const [gRemoveAudio, setGRemoveAudio] = useState(false);
   const [savingGuidance, setSavingGuidance] = useState(false);
 
-  // Healing sheet modal
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetName, setSheetName] = useState<string>("");
   const [sheetScope, setSheetScope] = useState<"phase" | "personal">("phase");
@@ -248,8 +246,13 @@ export default function AdminContent() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const resetGuidanceAudioState = (audioUrl?: string | null) => {
+    setGAudioUrl(audioUrl || "");
+    setGAudioFile(null);
+    setGRemoveAudio(false);
+  };
 
   const openAddGuidance = (phaseId: number) => {
     setGPhaseLocked(true);
@@ -257,7 +260,7 @@ export default function AdminContent() {
     setGDay(1);
     setGTitle("");
     setGContent("");
-    setGAudioUrl("");
+    resetGuidanceAudioState("");
     setGuidanceOpen(true);
   };
 
@@ -268,7 +271,7 @@ export default function AdminContent() {
     const existing = guidanceByPhase.get(phaseId)?.find((x) => x.day === 1);
     setGTitle(existing?.title || "");
     setGContent(existing?.content || "");
-    setGAudioUrl(existing?.audioUrl || "");
+    resetGuidanceAudioState(existing?.audioUrl || "");
     setGuidanceOpen(true);
   };
 
@@ -278,7 +281,7 @@ export default function AdminContent() {
     setGDay(1);
     setGTitle("");
     setGContent("");
-    setGAudioUrl("");
+    resetGuidanceAudioState("");
     setGuidanceOpen(true);
   };
 
@@ -287,19 +290,24 @@ export default function AdminContent() {
     const existing = guidanceByPhase.get(gPhaseId)?.find((x) => x.day === day);
     setGTitle(existing?.title || "");
     setGContent(existing?.content || "");
-    setGAudioUrl(existing?.audioUrl || "");
+    resetGuidanceAudioState(existing?.audioUrl || "");
   };
 
   const saveGuidance = async () => {
     setSavingGuidance(true);
     try {
-      await upsertAdminGuidance({
-        phaseId: gPhaseId,
-        day: gDay, // backend expects local day (1-15) inside the phase
-        title: gTitle,
-        content: gContent,
-        audioUrl: gAudioUrl.trim() ? gAudioUrl.trim() : null,
-      });
+      const form = new FormData();
+      form.append("phaseId", String(gPhaseId));
+      form.append("day", String(gDay));
+      form.append("title", gTitle.trim());
+      form.append("content", gContent.trim());
+      form.append("removeAudio", gRemoveAudio ? "true" : "false");
+
+      if (gAudioFile) {
+        form.append("audio", gAudioFile);
+      }
+
+      await upsertAdminGuidance(form);
       setGuidanceOpen(false);
       await refreshAll();
     } catch (e: any) {
@@ -337,18 +345,17 @@ export default function AdminContent() {
     setSheetFile(null);
   };
 
-const doUploadSheet = async () => {
-  const name = sheetName.trim();
-  if (!name) {
-    alert("Please enter a sheet name");
-    return;
-  }
+  const doUploadSheet = async () => {
+    const name = sheetName.trim();
+    if (!name) {
+      alert("Please enter a sheet name");
+      return;
+    }
 
-  if (!sheetFile) {
-    alert("Choose a file");
-    return;
-  }
-
+    if (!sheetFile) {
+      alert("Choose a file");
+      return;
+    }
 
     if (sheetScope === "personal" && !sheetUserId) {
       alert("Pick a client for personal sheet");
@@ -362,8 +369,7 @@ const doUploadSheet = async () => {
     setUploading(true);
     try {
       const fd = new FormData();
-      if (sheetName.trim()) fd.append("name", name);
-
+      fd.append("name", name);
       fd.append("scope", sheetScope);
 
       if (sheetScope === "phase") {
@@ -388,6 +394,9 @@ const doUploadSheet = async () => {
   const createdCountForPhase = (phaseId: number) => {
     return guidanceByPhase.get(phaseId)?.length || 0;
   };
+
+  const existingGuidance = guidanceByPhase.get(gPhaseId)?.find((x) => x.day === gDay);
+  const currentAudioUrl = gRemoveAudio ? "" : gAudioUrl;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -420,7 +429,6 @@ const doUploadSheet = async () => {
             <PhaseCard
               key={p.id}
               phaseId={p.id}
-              title={p.name}
               subtitle={p.name}
               createdCount={createdCountForPhase(p.id)}
               onAdd={() => openAddGuidance(p.id)}
@@ -450,8 +458,7 @@ const doUploadSheet = async () => {
 
               {!loading &&
                 sheets.map((s) => {
-                  const viewUrl = resolveFileUrl(s.url); // opens from backend, not frontend
-
+                  const viewUrl = resolveFileUrl(s.url);
                   const uploadedLabel = s.uploadedAt
                     ? `Uploaded ${new Date(s.uploadedAt).toLocaleString()}`
                     : "";
@@ -521,7 +528,7 @@ const doUploadSheet = async () => {
           <div className="w-full max-w-lg rounded-2xl bg-background border border-border shadow-elevated p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="font-serif text-lg font-semibold text-foreground">
-                {guidanceByPhase.get(gPhaseId)?.some((x) => x.day === gDay) ? "Edit" : "Add"} Guidance
+                {existingGuidance ? "Edit" : "Add"} Guidance
               </p>
               <button
                 className="text-muted-foreground hover:text-foreground"
@@ -598,13 +605,74 @@ const doUploadSheet = async () => {
             </div>
 
             <div className="mt-3">
-              <label className="text-xs text-muted-foreground">Audio URL (optional)</label>
-              <input
-                className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
-                value={gAudioUrl}
-                onChange={(e) => setGAudioUrl(e.target.value)}
-                placeholder="https://..."
-              />
+              <label className="text-xs text-muted-foreground">Audio file (optional)</label>
+
+              {currentAudioUrl && !gAudioFile && (
+                <div className="mt-2 rounded-xl border border-border bg-card px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-foreground truncate">
+                        {audioLabelFromUrl(currentAudioUrl)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a
+                        href={resolveFileUrl(currentAudioUrl)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Preview
+                      </a>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-sm text-destructive"
+                        onClick={() => {
+                          setGRemoveAudio(true);
+                          setGAudioFile(null);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {gAudioFile && (
+                <div className="mt-2 rounded-xl border border-border bg-card px-3 py-3 flex items-center justify-between gap-3">
+                  <p className="text-sm text-foreground truncate min-w-0">{gAudioFile.name}</p>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground"
+                    onClick={() => setGAudioFile(null)}
+                  >
+                    <X className="h-4 w-4" />
+                    Remove
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-2">
+                <label className="flex items-center justify-center gap-2 w-full rounded-xl border border-dashed border-border bg-card px-4 py-3 text-sm cursor-pointer hover:bg-muted/40">
+                  <Upload className="h-4 w-4" />
+                  <span>{gAudioFile || (!currentAudioUrl && !gRemoveAudio) ? "Choose audio file" : "Replace audio file"}</span>
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] || null;
+                      setGAudioFile(file);
+                      if (file) {
+                        setGRemoveAudio(false);
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
 
             <div className="mt-5 flex items-center justify-between">
@@ -737,7 +805,6 @@ const doUploadSheet = async () => {
               >
                 {uploading ? "Uploading..." : "Upload"}
               </Button>
-
             </div>
           </div>
         </div>
