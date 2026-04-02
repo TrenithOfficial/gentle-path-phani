@@ -86,3 +86,33 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 CREATE INDEX IF NOT EXISTS idx_chat_messages_user_created ON chat_messages(user_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_unread_admin ON chat_messages(user_id) WHERE sender_role='client' AND read_at_admin IS NULL;
 CREATE INDEX IF NOT EXISTS idx_chat_messages_unread_client ON chat_messages(user_id) WHERE sender_role='admin' AND read_at_client IS NULL;
+
+-- Pending public signup requests
+CREATE TABLE IF NOT EXISTS signup_requests (
+  id                                      UUID PRIMARY KEY,
+  email                                   TEXT NOT NULL,
+  name                                    TEXT,
+  password                                TEXT NOT NULL,
+  status                                  TEXT NOT NULL DEFAULT 'pending',
+  first_name                              TEXT,
+  last_name                               TEXT,
+  age                                     INT,
+  gender                                  TEXT,
+  phone_country_code                      TEXT,
+  phone_number                            TEXT,
+  timezone                                TEXT,
+  address                                 TEXT,
+  emergency_contact_name                  TEXT,
+  emergency_contact_phone_country_code    TEXT,
+  emergency_contact_phone_number          TEXT,
+  notes                                   TEXT,
+  created_at                              TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reviewed_at                             TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_signup_requests_status_created
+  ON signup_requests(status, created_at DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_signup_requests_pending_email
+  ON signup_requests ((LOWER(email)))
+  WHERE status = 'pending';

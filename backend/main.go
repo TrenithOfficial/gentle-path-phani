@@ -123,6 +123,7 @@ func main() {
 
 	RegisterAdminUserRoutes(api)
 	RegisterAdminUserInviteRoutes(api)
+	RegisterSignupRequestRoutes(r, api)
 
 	RegisterMessageRoutes(api)
 	RegisterAdminMessageRoutes(api)
