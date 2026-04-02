@@ -7,8 +7,10 @@ import RequireRole from "@/components/RequireRole";
 
 import AuthGate from "./pages/AuthGate";
 
+
 // Client pages
 import Login from "./pages/Login";
+import Signup from "@/pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import CheckIn from "./pages/CheckIn";
 import HealingSheets from "./pages/HealingSheets";
@@ -50,6 +52,8 @@ const App = () => (
               </RequireRole>
             }
           />
+
+          <Route path="/signup" element={<Signup />} />
 
           <Route
             path="/account"

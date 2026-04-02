@@ -222,6 +222,17 @@ const Login = () => {
               </Button>
             </form>
 
+            <p className="text-center text-sm mt-4">
+              Don’t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
+                className="text-primary hover:underline"
+              >
+                Sign up
+              </button>
+            </p>
+
             <p className="text-center text-sm mt-6">
               Need help?{" "}
               <button
