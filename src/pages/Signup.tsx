@@ -125,7 +125,42 @@ const Signup = () => {
 
     setSaving(true);
     try {
-      alert("Signup page UI is ready. Next step will connect this form to the backend.");
+      const finalDisplayName =
+        displayName.trim() || `${firstName.trim()} ${lastName.trim()}`.trim();
+
+      const res = await fetch("/api/signup-requests", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          name: finalDisplayName,
+          password: password.trim(),
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          age: Number(age.trim()),
+          gender: gender.trim(),
+          phoneCountryCode,
+          phoneNumber: phoneNumber.trim(),
+          timezone: timezone.trim(),
+          address: address.trim(),
+          emergencyContactName: emergencyContactName.trim(),
+          emergencyContactPhoneCountryCode,
+          emergencyContactPhoneNumber: emergencyContactPhoneNumber.trim(),
+          notes: notes.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to submit signup request");
+      }
+
+      alert("We’ve received your request. Please wait for admin approval via email.");
+    } catch (err: any) {
+      alert(err?.message || "Failed to submit signup request");
     } finally {
       setSaving(false);
     }
