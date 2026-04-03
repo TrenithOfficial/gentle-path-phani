@@ -15,8 +15,12 @@ import {
   updateAdminUser,
   deleteAdminUser,
   inviteAdminUser,
+  fetchSignupRequests,
+  acceptSignupRequest,
+  deleteSignupRequest,
   type AdminUserRow,
   type AdminUserStatus,
+  type SignupRequestRow,
 } from "@/lib/adminUsers";
 import { getCurrentDay, getPhaseForDay } from "@/types/healing";
 import {
@@ -31,14 +35,16 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+type AdminUsersView = AdminUserStatus | "requests";
 
 const AdminUsers = () => {
   const navigate = useNavigate();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [signupRequests, setSignupRequests] = useState<SignupRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState<AdminUserStatus>("active");
+  const [status, setStatus] = useState<AdminUsersView>("active");
 
   // Add modal
   const [open, setOpen] = useState(false);
@@ -161,8 +167,25 @@ const AdminUsers = () => {
     }
   };
 
+  const loadSignupRequests = async () => {
+    try {
+      const data = await fetchSignupRequests();
+      setSignupRequests(data);
+    } catch (e) {
+      console.error(e);
+      alert(e instanceof Error ? e.message : "Failed to load signup requests");
+    }
+  };
+
   useEffect(() => {
+    if (status === "requests") {
+      setLoading(true);
+      loadSignupRequests().finally(() => setLoading(false));
+      return;
+    }
+
     load(status);
+    loadSignupRequests();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
@@ -292,8 +315,7 @@ const AdminUsers = () => {
       return;
     }
 
-    const finalDisplayName =
-      displayName || `${firstName} ${lastName}`.trim();
+    const finalDisplayName = displayName || `${firstName} ${lastName}`.trim();
 
     setSaving(true);
     try {
@@ -322,7 +344,7 @@ const AdminUsers = () => {
 
       setOpen(false);
       resetCreateForm();
-      await load(status);
+      await load(status === "requests" ? "active" : status);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Failed to create user");
@@ -412,7 +434,7 @@ const AdminUsers = () => {
 
       setEditOpen(false);
       setEditUser(null);
-      await load(status);
+      await load(status === "requests" ? "active" : status);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Failed to update user");
@@ -433,7 +455,7 @@ const AdminUsers = () => {
       await deleteAdminUser(deleteUser.id);
       setDeleteOpen(false);
       setDeleteUser(null);
-      await load(status);
+      await load(status === "requests" ? "active" : status);
     } catch (e) {
       console.error(e);
       alert(e instanceof Error ? e.message : "Failed to delete user");
@@ -474,11 +496,12 @@ const AdminUsers = () => {
       <Header title="Manage Users" showBack />
 
       <main className="container max-w-lg mx-auto px-4 py-6 space-y-4">
-        <Tabs value={status} onValueChange={(v) => setStatus(v as AdminUserStatus)}>
-          <TabsList className="grid grid-cols-3 w-full">
+        <Tabs value={status} onValueChange={(v) => setStatus(v as AdminUsersView)}>
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="inactive">Inactive</TabsTrigger>
             <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="requests">Requests</TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -486,146 +509,235 @@ const AdminUsers = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search clients..."
+              placeholder={status === "requests" ? "Search UI not added for requests yet" : "Search clients..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
+              disabled={status === "requests"}
             />
           </div>
 
-          <Button
-            variant="healing"
-            size="icon"
-            className="shrink-0"
-            onClick={() => {
-              resetCreateForm();
-              setOpen(true);
-            }}
-            title="Add client"
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
+          {status !== "requests" && (
+            <Button
+              variant="healing"
+              size="icon"
+              className="shrink-0"
+              onClick={() => {
+                resetCreateForm();
+                setOpen(true);
+              }}
+              title="Add client"
+            >
+              <Plus className="h-5 w-5" />
+            </Button>
+          )}
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading users...</p>
+          <p className="text-sm text-muted-foreground">
+            {status === "requests" ? "Loading signup requests..." : "Loading users..."}
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {filteredClients.length} client{filteredClients.length !== 1 ? "s" : ""}
+            {status === "requests"
+              ? `${signupRequests.length} request${signupRequests.length !== 1 ? "s" : ""}`
+              : `${filteredClients.length} client${filteredClients.length !== 1 ? "s" : ""}`}
           </p>
         )}
 
         <div className="space-y-3">
-          {!loading && filteredClients.length === 0 && (
-            <Card variant="glass">
-              <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                No clients found.
-              </CardContent>
-            </Card>
+          {status === "requests" && (
+            <div className="space-y-3">
+              {!loading && signupRequests.length === 0 && (
+                <Card variant="glass">
+                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                    No signup requests found.
+                  </CardContent>
+                </Card>
+              )}
+
+              {signupRequests.map((req) => (
+                <Card key={req.id} variant="elevated">
+                  <CardContent className="py-4">
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-medium text-foreground">{req.name || "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground">{req.email}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2 text-sm text-muted-foreground">
+                        <div>First Name: {req.firstName || "-"}</div>
+                        <div>Last Name: {req.lastName || "-"}</div>
+                        <div>Age: {req.age ?? "-"}</div>
+                        <div>Gender: {req.gender || "-"}</div>
+                        <div>
+                          Phone: {req.phoneCountryCode || ""} {req.phoneNumber || "-"}
+                        </div>
+                        <div>Timezone: {req.timezone || "-"}</div>
+                        <div>Address: {req.address || "-"}</div>
+                        <div>Emergency Contact: {req.emergencyContactName || "-"}</div>
+                        <div>
+                          Emergency Phone: {req.emergencyContactPhoneCountryCode || ""}{" "}
+                          {req.emergencyContactPhoneNumber || "-"}
+                        </div>
+                        <div>Notes: {req.notes || "-"}</div>
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <Button
+                          size="sm"
+                          variant="healing"
+                          onClick={async () => {
+                            try {
+                              await acceptSignupRequest(req.id);
+                              await loadSignupRequests();
+                              await load("active");
+                            } catch (e) {
+                              console.error(e);
+                              alert(e instanceof Error ? e.message : "Failed to accept signup request");
+                            }
+                          }}
+                        >
+                          Accept
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={async () => {
+                            try {
+                              await deleteSignupRequest(req.id);
+                              await loadSignupRequests();
+                            } catch (e) {
+                              console.error(e);
+                              alert(e instanceof Error ? e.message : "Failed to delete signup request");
+                            }
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
 
-          {filteredClients.map((client, index) => {
-            const startDateStr = client.startDate;
-            const startDate = startDateStr ? new Date(startDateStr) : null;
+          {status !== "requests" && (
+            <>
+              {!loading && filteredClients.length === 0 && (
+                <Card variant="glass">
+                  <CardContent className="py-6 text-center text-sm text-muted-foreground">
+                    No clients found.
+                  </CardContent>
+                </Card>
+              )}
 
-            const currentDay = startDate ? getCurrentDay(startDateStr) : 0;
-            const currentPhase = startDate ? getPhaseForDay(currentDay) : null;
+              {filteredClients.map((client, index) => {
+                const startDateStr = client.startDate;
+                const startDate = startDateStr ? new Date(startDateStr) : null;
 
-            return (
-              <Card
-                key={client.id}
-                variant="elevated"
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 0.05}s` }}
-              >
-                <CardContent className="py-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <User className="h-5 w-5 text-primary" />
-                    </div>
+                const currentDay = startDate ? getCurrentDay(startDateStr) : 0;
+                const currentPhase = startDate ? getPhaseForDay(currentDay) : null;
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium text-foreground">{client.name || "Unknown"}</p>
-                          <p className="text-xs text-muted-foreground">{client.email}</p>
+                return (
+                  <Card
+                    key={client.id}
+                    variant="elevated"
+                    className="animate-slide-up"
+                    style={{ animationDelay: `${index * 0.05}s` }}
+                  >
+                    <CardContent className="py-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="h-5 w-5 text-primary" />
                         </div>
 
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                              <MoreVertical className="h-4 w-4" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium text-foreground">{client.name || "Unknown"}</p>
+                              <p className="text-xs text-muted-foreground">{client.email}</p>
+                            </div>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem className="gap-2" onClick={() => openDetails(client.id)}>
+                                  View Details
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem className="gap-2" onClick={() => openProtocols(client.id)}>
+                                  Protocols
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  className="gap-2"
+                                  onClick={() => onInvite(client)}
+                                  disabled={inviting}
+                                >
+                                  <Link2 className="h-4 w-4" />
+                                  Invite Client
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem className="gap-2" onClick={() => openEdit(client)}>
+                                  <Edit className="h-4 w-4" />
+                                  Edit User
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  className="gap-2 text-destructive"
+                                  onClick={() => openDelete(client)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete User
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+
+                          {startDate ? (
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                                Day {currentDay}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                Phase {currentPhase?.id ?? "-"}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="text-xs text-muted-foreground">Start date not set</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {startDate ? <>Started {startDate.toLocaleDateString()}</> : <>Not started</>}
+                          </div>
+
+                          <div className="mt-3 flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => openDetails(client.id)}>
+                              Details
                             </Button>
-                          </DropdownMenuTrigger>
-
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="gap-2" onClick={() => openDetails(client.id)}>
-                              View Details
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem className="gap-2" onClick={() => openProtocols(client.id)}>
+                            <Button variant="outline" size="sm" onClick={() => openProtocols(client.id)}>
                               Protocols
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              className="gap-2"
-                              onClick={() => onInvite(client)}
-                              disabled={inviting}
-                            >
-                              <Link2 className="h-4 w-4" />
-                              Invite Client
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem className="gap-2" onClick={() => openEdit(client)}>
-                              <Edit className="h-4 w-4" />
-                              Edit User
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              className="gap-2 text-destructive"
-                              onClick={() => openDelete(client)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete User
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      {startDate ? (
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                            Day {currentDay}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            Phase {currentPhase?.id ?? "-"}
-                          </span>
+                            </Button>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-muted-foreground">Start date not set</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {startDate ? <>Started {startDate.toLocaleDateString()}</> : <>Not started</>}
                       </div>
-
-                      <div className="mt-3 flex gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openDetails(client.id)}>
-                          Details
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => openProtocols(client.id)}>
-                          Protocols
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
+          )}
         </div>
       </main>
 
@@ -658,9 +770,7 @@ const AdminUsers = () => {
                 placeholder="client@email.com"
               />
               {newEmail.trim() !== "" && !emailRegex.test(newEmail.trim().toLowerCase()) && (
-                <p className="text-sm text-muted-foreground">
-                  Enter a valid email address.
-                </p>
+                <p className="text-sm text-muted-foreground">Enter a valid email address.</p>
               )}
             </div>
 
@@ -687,7 +797,9 @@ const AdminUsers = () => {
                 >
                   <option value="">Select</option>
                   {genderOptions.map((g) => (
-                    <option key={g} value={g}>{g}</option>
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -702,7 +814,9 @@ const AdminUsers = () => {
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
                   {phoneCountryOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -729,7 +843,11 @@ const AdminUsers = () => {
 
             <div className="space-y-2">
               <Label>Address *</Label>
-              <Input value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Full address" />
+              <Input
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                placeholder="Full address"
+              />
             </div>
 
             <div className="space-y-3">
@@ -749,7 +867,9 @@ const AdminUsers = () => {
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     {phoneCountryOptions.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -778,11 +898,7 @@ const AdminUsers = () => {
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
                 Cancel
               </Button>
-              <Button
-                variant="healing"
-                onClick={onCreate}
-                disabled={saving || !isCreateFormValid}
-              >
+              <Button variant="healing" onClick={onCreate} disabled={saving || !isCreateFormValid}>
                 {saving ? "Creating..." : "Create"}
               </Button>
             </div>
@@ -841,7 +957,9 @@ const AdminUsers = () => {
                   >
                     <option value="">Select</option>
                     {genderOptions.map((g) => (
-                      <option key={g} value={g}>{g}</option>
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -856,7 +974,9 @@ const AdminUsers = () => {
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   >
                     {phoneCountryOptions.map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -894,7 +1014,9 @@ const AdminUsers = () => {
                       className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                     >
                       {phoneCountryOptions.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -920,11 +1042,7 @@ const AdminUsers = () => {
                 <Button variant="ghost" onClick={() => setEditOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
-                <Button
-                  variant="healing"
-                  onClick={saveEdit}
-                  disabled={saving || !isEditFormValid}
-                >
+                <Button variant="healing" onClick={saveEdit} disabled={saving || !isEditFormValid}>
                   {saving ? "Saving..." : "Save"}
                 </Button>
               </div>

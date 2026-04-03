@@ -174,3 +174,49 @@ export type AdminUserCheckInRow = {
 export async function fetchAdminUserCheckins(userId: string): Promise<AdminUserCheckInRow[]> {
   return requestJson(`/api/admin/user-checkins/${encodeURIComponent(userId)}`, { method: "GET" });
 }
+
+// ---------------- SIGNUP REQUESTS ----------------
+
+export type SignupRequestRow = {
+  id: string;
+  email: string;
+  name: string;
+  status: string;
+  createdAt: string;
+
+  firstName?: string | null;
+  lastName?: string | null;
+  age?: number | null;
+  gender?: string | null;
+
+  phoneCountryCode?: string | null;
+  phoneNumber?: string | null;
+
+  timezone?: string | null;
+  address?: string | null;
+
+  emergencyContactName?: string | null;
+  emergencyContactPhoneCountryCode?: string | null;
+  emergencyContactPhoneNumber?: string | null;
+
+  notes?: string | null;
+};
+
+// Fetch pending signup requests
+export async function fetchSignupRequests(): Promise<SignupRequestRow[]> {
+  return requestJson(`/api/admin/signup-requests`, { method: "GET" });
+}
+
+// Accept signup request
+export async function acceptSignupRequest(id: string): Promise<void> {
+  await requestJson(`/api/admin/signup-requests/${encodeURIComponent(id)}/accept`, {
+    method: "POST",
+  });
+}
+
+// Delete signup request
+export async function deleteSignupRequest(id: string): Promise<void> {
+  await requestJson(`/api/admin/signup-requests/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
