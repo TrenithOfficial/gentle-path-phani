@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	fbauth "firebase.google.com/go/v4/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -58,6 +59,17 @@ type PublicSignupRequest struct {
 	EmergencyContactPhoneNumber      *string `json:"emergencyContactPhoneNumber"`
 
 	Notes *string `json:"notes"`
+}
+
+func trimOrNilSignup(s *string) *string {
+	if s == nil {
+		return nil
+	}
+	t := strings.TrimSpace(*s)
+	if t == "" {
+		return nil
+	}
+	return &t
 }
 
 func RegisterSignupRequestRoutes(r *gin.Engine, api *gin.RouterGroup) {
@@ -268,6 +280,11 @@ func RegisterSignupRequestRoutes(r *gin.Engine, api *gin.RouterGroup) {
 			return
 		}
 
+		if FirebaseAuth == nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "firebase admin not configured on server"})
+			return
+		}
+
 		id, err := uuid.Parse(strings.TrimSpace(c.Param("id")))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request id"})
@@ -336,10 +353,186 @@ func RegisterSignupRequestRoutes(r *gin.Engine, api *gin.RouterGroup) {
 			return
 		}
 
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		name := strings.TrimSpace(req.Name)
+		password = strings.TrimSpace(password)
+
+		if email == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "signup request email is empty"})
+			return
+		}
+		if password == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "signup request password is empty"})
+			return
+		}
+
+		firstName := trimOrNilSignup(req.FirstName)
+		lastName := trimOrNilSignup(req.LastName)
+		gender := trimOrNilSignup(req.Gender)
+
+		phoneCC := trimOrNilSignup(req.PhoneCountryCode)
+		phoneNum := trimOrNilSignup(req.PhoneNumber)
+
+		tz := trimOrNilSignup(req.Timezone)
+		addr := trimOrNilSignup(req.Address)
+
+		ecName := trimOrNilSignup(req.EmergencyContactName)
+		ecCC := trimOrNilSignup(req.EmergencyContactPhoneCountryCode)
+		ecNum := trimOrNilSignup(req.EmergencyContactPhoneNumber)
+
+		notes := trimOrNilSignup(req.Notes)
+
+		if name == "" {
+			fn := ""
+			ln := ""
+			if firstName != nil {
+				fn = *firstName
+			}
+			if lastName != nil {
+				ln = *lastName
+			}
+			name = strings.TrimSpace(strings.TrimSpace(fn) + " " + strings.TrimSpace(ln))
+		}
+
+		ctx := c.Request.Context()
+
+		var firebaseUser *fbauth.UserRecord
+		firebaseUser, err = FirebaseAuth.GetUserByEmail(ctx, email)
+		if err != nil {
+			if fbauth.IsUserNotFound(err) {
+				toCreate := (&fbauth.UserToCreate{}).
+					Email(email).
+					Password(password)
+
+				if name != "" {
+					toCreate = toCreate.DisplayName(name)
+				}
+
+				firebaseUser, err = FirebaseAuth.CreateUser(ctx, toCreate)
+				if err != nil {
+					c.Error(err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create firebase user"})
+					return
+				}
+			} else {
+				c.Error(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to lookup firebase user"})
+				return
+			}
+		} else {
+			update := (&fbauth.UserToUpdate{}).Password(password)
+			if name != "" {
+				update = update.DisplayName(name)
+			}
+			_, err = FirebaseAuth.UpdateUser(ctx, firebaseUser.UID, update)
+			if err != nil {
+				c.Error(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update firebase user"})
+				return
+			}
+
+			firebaseUser, err = FirebaseAuth.GetUser(ctx, firebaseUser.UID)
+			if err != nil {
+				c.Error(err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to reload firebase user"})
+				return
+			}
+		}
+
+		if err := FirebaseAuth.SetCustomUserClaims(ctx, firebaseUser.UID, map[string]interface{}{"role": "client"}); err != nil {
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to set user role"})
+			return
+		}
+
+		startDate := time.Now().UTC()
+		userID := uuid.New()
+
+		tx, err := DB.Begin(ctx)
+		if err != nil {
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to start database transaction"})
+			return
+		}
+		defer tx.Rollback(ctx)
+
+		_, err = tx.Exec(ctx, `
+			INSERT INTO users (
+				id, email, name, role, start_date,
+				first_name, last_name, age, gender,
+				phone_country_code, phone_number,
+				timezone, address,
+				emergency_contact_name, emergency_contact_phone_country_code, emergency_contact_phone_number,
+				notes
+			)
+			VALUES (
+				$1, $2, $3, 'client', $4,
+				$5, $6, $7, $8,
+				$9, $10,
+				$11, $12,
+				$13, $14, $15,
+				$16
+			)
+			ON CONFLICT (email) DO UPDATE SET
+				name = EXCLUDED.name,
+				role = 'client',
+				start_date = EXCLUDED.start_date,
+
+				first_name = EXCLUDED.first_name,
+				last_name = EXCLUDED.last_name,
+				age = EXCLUDED.age,
+				gender = EXCLUDED.gender,
+
+				phone_country_code = EXCLUDED.phone_country_code,
+				phone_number = EXCLUDED.phone_number,
+
+				timezone = EXCLUDED.timezone,
+				address = EXCLUDED.address,
+
+				emergency_contact_name = EXCLUDED.emergency_contact_name,
+				emergency_contact_phone_country_code = EXCLUDED.emergency_contact_phone_country_code,
+				emergency_contact_phone_number = EXCLUDED.emergency_contact_phone_number,
+
+				notes = EXCLUDED.notes
+		`, userID, email, name, &startDate,
+			firstName, lastName, req.Age, gender,
+			phoneCC, phoneNum,
+			tz, addr,
+			ecName, ecCC, ecNum,
+			notes,
+		)
+		if err != nil {
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to upsert approved user"})
+			return
+		}
+
+		tag, err := tx.Exec(ctx, `
+			UPDATE signup_requests
+			SET status = 'accepted', reviewed_at = now()
+			WHERE id = $1 AND status = 'pending'
+		`, id)
+		if err != nil {
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to update signup request"})
+			return
+		}
+		if tag.RowsAffected() == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "signup request was already processed"})
+			return
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			c.Error(err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to commit approval"})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{
-			"ok":      true,
-			"message": "accept endpoint ready",
-			"request": req,
+			"ok":          true,
+			"message":     "signup request accepted",
+			"email":       email,
+			"firebaseUid": firebaseUser.UID,
 		})
 	})
 }
